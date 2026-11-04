@@ -175,10 +175,10 @@ const Editor = forwardRef<WysiwygEditorRef, EditorProps>(
 
     function escapeAttribute (value: string): string {
       return value
-        .replaceAll('&', '&amp;')
-        .replaceAll('"', '&quot;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
     }
 
     function insertElementLink (editor: ClassicEditor, uri: string, id: unknown, type?: string): void {
