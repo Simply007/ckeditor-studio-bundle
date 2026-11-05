@@ -1,9 +1,14 @@
-# CKEditor Studio Bundle (demo)
+# CKEditor Studio Bundle
 
-CKEditor rich text editor mounted as the wysiwyg editor in Pimcore Studio. Built for
-the talk "AI Best Practices for Your Product" at Pimcore Community Dev Days 2026, as
-the missing CKEditor counterpart to `pimcore/quill-bundle`, whose 2026.x architecture
-this bundle mirrors.
+CKEditor rich text editor mounted as the wysiwyg editor in Pimcore Studio, the
+CKEditor counterpart to `pimcore/quill-bundle`, whose 2026.x architecture this bundle
+mirrors. It started as the demo for the talk "AI Best Practices for Your Product" at
+Pimcore Community Dev Days 2026 and was extracted from the
+[guidepost demo repository](https://github.com/Simply007/pcdd26-pimcore-ai-guidepost),
+which stays the reference installation.
+
+Community package: not an official Pimcore or CKEditor product. Supported line:
+Pimcore 2026.3.x with Pimcore Studio 2026.3.x.
 
 Status: the core integration is runtime-tested end to end on the demo stack (see
 `TESTING.md`); the runtime configuration described below is build-tested and
@@ -48,12 +53,20 @@ Pimcore Studio is a module-federation host. This bundle contributes a remote:
 
 ## Install and enable
 
-In this repository everything is pre-wired (path repository in the root
-`composer.json`, bundle active in `config/bundles.php`). From scratch:
+The package is not on Packagist yet; add the GitHub repository to your project's
+`composer.json` first:
+
+```json
+"repositories": [
+  { "type": "vcs", "url": "https://github.com/Simply007/ckeditor-studio-bundle" }
+]
+```
+
+Then, inside the PHP container (host PHP often lacks Pimcore's extensions):
 
 ```bash
-# 1. Composer (path repository route; see "Extracting this bundle" for standalone)
-composer require chrastina/ckeditor-studio-bundle:@dev
+# 1. Composer
+composer require chrastina/ckeditor-studio-bundle:^0.1
 
 # 2. Enable the bundle (writes config/bundles.php)
 docker compose exec php bin/console pimcore:bundle:enable CKEditorStudioBundle
@@ -203,8 +216,8 @@ narrow columns still show every button. `fullscreen` is left out of the inline
 toolbar (CKEditor's Fullscreen supports the classic and decoupled editor types only).
 CKEditor AI, the shared AI Context and real-time collaboration work the same way.
 The option applies to document editables only; data object fields always use the
-classic editor. The landing page document type (`templates/landing/landing.html.twig`)
-uses it for all its rich text fields.
+classic editor. The landing page document type of the guidepost demo repository
+(`templates/landing/landing.html.twig`) uses it for all its rich text fields.
 
 ### Premium feature gates
 
@@ -428,23 +441,13 @@ assets/studio/               TypeScript frontend (rsbuild + module federation, p
 public/studio/build/<id>/    Committed frontend build (entrypoints.json consumed by PHP)
 ```
 
-## Extracting this bundle
+## Development and releases
 
-The bundle is self-contained under `packages/ckeditor-studio-bundle` and extraction
-to its own repository is tracked as
-[issue #3](https://github.com/Simply007/pcdd26-pimcore-ai-guidepost/issues/3). A
-standalone install needs:
-
-- Distribution: copy this directory to its own repository; `composer.json` already
-  carries the metadata (name, description, license, autoload, `type: pimcore-bundle`,
-  `extra.pimcore.bundles`). Consumers then either add a VCS/path repository entry and
-  `composer require chrastina/ckeditor-studio-bundle`, or the package gets published
-  to Packagist and the repository entry disappears.
 - Frontend build: the committed build under `public/studio/build/<build-id>/` ships
   with the package, so consumers need no Node toolchain. Maintainers rebuild with
-  `npm ci && npm run build` in `assets/studio/` and commit the output. (Pimcore's own
-  bundles ship a zip via `BuildArchiveProviderInterface` instead; switching to that
-  route is optional polish.)
+  `npm ci && npm run build` in `assets/studio/` and commit the output together with
+  the source change. (Pimcore's own bundles ship a zip via
+  `BuildArchiveProviderInterface` instead; switching to that route is optional.)
 - Studio registration: nothing manual. `extra.pimcore.bundles` makes
   `pimcore:bundle:enable CKEditorStudioBundle` work, the prepended `studio_ui.yaml`
   registers the entry point and app config providers only when
@@ -452,3 +455,15 @@ standalone install needs:
 - Versioning: pin `pimcore/studio-ui-bundle` (composer) and
   `@pimcore/studio-ui-bundle` (npm) to the same minor line; the frontend consumes
   Studio's SDK types at build time and its module federation remote at runtime.
+- Releases are git tags (`v0.1.0` first). CI runs `php -l`, the TypeScript check and
+  the production build on every push.
+- `TESTING.md` is the runtime test plan written against the guidepost demo stack;
+  `SKILL-FINDINGS.md` records what the agent skills used to build the bundle got
+  right and wrong.
+
+## License
+
+GPL-2.0-or-later, see `LICENSE`. The committed build bundles CKEditor's open source
+packages, which are licensed under GPL-2.0-or-later. CKEditor premium features (AI,
+real-time collaboration) need a commercial CKEditor license key; without a key the
+bundle runs the open source feature set only.

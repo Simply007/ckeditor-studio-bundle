@@ -1,7 +1,7 @@
 {
   "name": "chrastina/ckeditor-studio-bundle",
-  "description": "CKEditor rich text editor integration for Pimcore Studio. Conference demo for Pimcore Community Dev Days 2026, modeled on pimcore/quill-bundle.",
-  "license": "MIT",
+  "description": "CKEditor as the rich text editor in Pimcore Studio: classic and inline editors, configurable toolbar, optional CKEditor AI and real-time collaboration. Community package, not affiliated with Pimcore GmbH.",
+  "license": "GPL-2.0-or-later",
   "type": "pimcore-bundle",
   "keywords": [
     "pimcore",
@@ -10,7 +10,7 @@
     "wysiwyg",
     "rich-text-editor"
   ],
-  "homepage": "https://github.com/Simply007/pcdd26-pimcore-ai-guidepost",
+  "homepage": "https://github.com/Simply007/ckeditor-studio-bundle",
   "authors": [
     {
       "name": "Ondrej Chrastina",
@@ -18,8 +18,8 @@
     }
   ],
   "support": {
-    "issues": "https://github.com/Simply007/pcdd26-pimcore-ai-guidepost/issues",
-    "source": "https://github.com/Simply007/pcdd26-pimcore-ai-guidepost/tree/main/packages/ckeditor-studio-bundle"
+    "issues": "https://github.com/Simply007/ckeditor-studio-bundle/issues",
+    "source": "https://github.com/Simply007/ckeditor-studio-bundle"
   },
   "require": {
     "php": ">=8.3",

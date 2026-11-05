@@ -1,5 +1,9 @@
 # Runtime test plan (on the running stack)
 
+Written for the [guidepost demo repository](https://github.com/Simply007/pcdd26-pimcore-ai-guidepost),
+where this bundle lived under `packages/ckeditor-studio-bundle` before extraction. Paths
+and commands below refer to that stack; the blog demo command lives there too.
+
 Static state as of 2026-11-05: PHP lints clean, TypeScript type-check passes, production
 frontend build committed under `public/studio/build/<build-id>/` with a valid
 `entrypoints.json` (entries: `main`, `ckeditor_studio_bundle`, `exposeRemote`).
