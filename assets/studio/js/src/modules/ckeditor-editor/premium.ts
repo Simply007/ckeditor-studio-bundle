@@ -1,43 +1,47 @@
 /**
- * Premium feature scaffold: CKEditor AI and real-time collaboration.
+ * Premium feature wiring: CKEditor AI and real-time collaboration.
  *
- * SCAFFOLDED ONLY. This module is the single place where premium plugins get
- * wired in once the project decides to use them. It currently ships no premium
- * code: the `ckeditor5-premium-features` package is deliberately NOT installed,
- * so the committed build stays a clean open source (GPL) build. With the flags
- * off (the default) this module is a no-op.
+ * The `ckeditor5-premium-features` package (same version as `ckeditor5`) is
+ * loaded through dynamic import() ONLY when a license key is configured AND at
+ * least one premium gate is enabled. The premium code and CSS therefore live in
+ * their own async chunks: with no key, or with all gates off, the editor
+ * initializes exactly as the plain open source (GPL) build and no premium chunk
+ * is even fetched.
  *
- * To activate a premium feature for real:
- *
- * 1. Get a commercial or trial license key (https://portal.ckeditor.com/) and
- *    set it as CKEDITOR_LICENSE_KEY (or ckeditor_studio.license_key).
- * 2. In assets/studio: `npm install ckeditor5-premium-features@<same version as ckeditor5>`.
- * 3. Uncomment the marked blocks below (imports, CSS, plugin + config wiring).
- * 4. Enable the flag in config/packages/ckeditor_studio.yaml (see the bundle README).
- * 5. Rebuild (`npm run build`) and commit the new build output.
- *
- * Until step 3 happens, an enabled flag only logs a console warning and the
- * editor keeps the free feature set, so a misconfigured instance never breaks.
+ * Gate behavior stays forgiving: an enabled gate whose prerequisites are
+ * missing (no key, no Cloud Services credentials, no collaboration channel id)
+ * logs a console warning and keeps the free feature set, so a misconfigured
+ * instance never breaks.
  */
 import { type EditorConfig } from 'ckeditor5'
-// Scaffold (step 3): uncomment when ckeditor5-premium-features is installed.
-// import { AIAssistant, RealTimeCollaborativeEditing } from 'ckeditor5-premium-features'
-// import 'ckeditor5-premium-features/ckeditor5-premium-features.css'
 import { type CKEditorStudioSettings } from './settings'
 
 export interface PremiumExtensions {
   plugins: NonNullable<EditorConfig['plugins']>
   config: Partial<EditorConfig>
+  /** True when real-time collaboration is active for this editor instance. */
+  realtimeCollaborationActive: boolean
 }
+
+/** The no-premium result: shared by the GPL path and every fallback. */
+export const EMPTY_PREMIUM_EXTENSIONS: PremiumExtensions = Object.freeze({
+  plugins: [],
+  config: {},
+  realtimeCollaborationActive: false
+})
 
 const TAG = '[ckeditor-studio-bundle]'
 
-export const resolvePremiumExtensions = (settings: CKEditorStudioSettings): PremiumExtensions => {
-  const extensions: PremiumExtensions = { plugins: [], config: {} }
+/**
+ * Whether the premium module should be loaded at all: a real license key is
+ * configured and at least one premium gate is enabled. Owns the "gates enabled
+ * but no key" warning, so the free fallback behaves exactly as before.
+ */
+export const isPremiumRequested = (settings: CKEditorStudioSettings): boolean => {
   const { ai, realtimeCollaboration: rtc } = settings.premium
 
   if (!ai.enabled && !rtc.enabled) {
-    return extensions
+    return false
   }
 
   if (!settings.hasLicenseKey) {
@@ -45,39 +49,123 @@ export const resolvePremiumExtensions = (settings: CKEditorStudioSettings): Prem
       `${TAG} Premium features are enabled in ckeditor_studio config but no license key is configured ` +
       '(CKEDITOR_LICENSE_KEY / ckeditor_studio.license_key). Falling back to the free feature set.'
     )
-    return extensions
+    return false
+  }
+
+  return true
+}
+
+export interface PremiumLoadOptions {
+  /**
+   * Collaboration channel id for this editor instance, or null when none could
+   * be derived. Derived by the editor component from the open Pimcore element
+   * (type + id) and the field name; an explicit per-field
+   * `editorConfig.collaboration.channelId` wins.
+   */
+  channelId: string | null
+  /** Container element for the presence list UI, rendered by the editor component. */
+  presenceListContainer?: HTMLElement | null
+}
+
+/**
+ * Dynamically imports `ckeditor5-premium-features` (code + CSS) and builds the
+ * plugin list and config for the enabled gates. Callers must guard with
+ * isPremiumRequested(): this function assumes a license key is present.
+ */
+export const loadPremiumExtensions = async (
+  settings: CKEditorStudioSettings,
+  options: PremiumLoadOptions
+): Promise<PremiumExtensions> => {
+  const { ai, realtimeCollaboration: rtc } = settings.premium
+
+  // The only reference to the premium package: rspack splits it (and its CSS)
+  // into async chunks that are fetched here and only here.
+  const [premium] = await Promise.all([
+    import('ckeditor5-premium-features'),
+    import('ckeditor5-premium-features/ckeditor5-premium-features.css')
+  ])
+
+  const extensions: PremiumExtensions = {
+    plugins: [],
+    config: {},
+    realtimeCollaborationActive: false
+  }
+
+  // CKEditor Cloud Services connection, shared by real-time collaboration and
+  // the CKEditor AI service authentication (config.cloudServices.tokenUrl).
+  const cloudServices: { tokenUrl?: string, webSocketUrl?: string } = {}
+  if (rtc.tokenUrl !== null && rtc.tokenUrl !== '') {
+    cloudServices.tokenUrl = rtc.tokenUrl
+  }
+  if (rtc.webSocketUrl !== null && rtc.webSocketUrl !== '') {
+    cloudServices.webSocketUrl = rtc.webSocketUrl
+  }
+  if (cloudServices.tokenUrl !== undefined || cloudServices.webSocketUrl !== undefined) {
+    extensions.config.cloudServices = cloudServices
   }
 
   if (ai.enabled) {
-    console.warn(
-      `${TAG} ckeditor_studio.premium.ai is enabled, but CKEditor AI is scaffolded only. ` +
-      'Install ckeditor5-premium-features and uncomment the AI block in premium.ts. ' +
-      'Extra requirements: an AI adapter configuration (ckeditor_studio.premium.ai.config, served as the ' +
-      'CKEditor "ai" option: adapter endpoint or Cloud Services based), and an "aiAssistant"/AI toolbar item.'
+    extensions.plugins.push(
+      // AIEditorIntegration is the required core integration (ships the
+      // 'toggleAi' toolbar button); the rest are the standalone AI features.
+      premium.AIEditorIntegration,
+      premium.AIChat,
+      premium.AIChatShortcuts,
+      premium.AIQuickActions,
+      premium.AIReviewMode,
+      premium.AITranslate
     )
-    // Scaffold (step 3):
-    // extensions.plugins.push(AIAssistant)
-    // extensions.config.ai = settings.premium.ai.config as EditorConfig['ai']
-    // Add the AI toolbar button via ckeditor_studio.toolbar (for example 'aiAssistant').
+
+    // The AI UI needs a container; 'overlay' works without a dedicated DOM
+    // element, which fits the Studio detail view. Everything from
+    // ckeditor_studio.premium.ai.config is spread over it, so integrators can
+    // override the container or add adapter, chat, serviceUrl, ... options.
+    extensions.config.ai = {
+      container: { type: 'overlay' },
+      ...ai.config
+    } as EditorConfig['ai']
+
+    if (cloudServices.tokenUrl === undefined) {
+      console.warn(
+        `${TAG} ckeditor_studio.premium.ai is enabled without a Cloud Services token endpoint ` +
+        '(ckeditor_studio.premium.realtime_collaboration.token_url, used for AI authentication even when the ' +
+        'realtime_collaboration gate is off). The AI features will not reach the AI service unless ' +
+        'premium.ai.config provides its own authentication (for example a legacy AI Assistant adapter).'
+      )
+    }
   }
 
   if (rtc.enabled) {
-    console.warn(
-      `${TAG} ckeditor_studio.premium.realtime_collaboration is enabled, but real-time collaboration is ` +
-      'scaffolded only. Install ckeditor5-premium-features and uncomment the RTC block in premium.ts. ' +
-      'Extra requirements: CKEditor Cloud Services credentials (token_url + web_socket_url, already part of ' +
-      'the yaml config), and a per-field collaboration channelId, which this integration still has to derive ' +
-      'from the Studio element id + field name.'
-    )
-    // Scaffold (step 3):
-    // extensions.plugins.push(RealTimeCollaborativeEditing)
-    // extensions.config.cloudServices = {
-    //   tokenUrl: rtc.tokenUrl ?? undefined,
-    //   webSocketUrl: rtc.webSocketUrl ?? undefined
-    // }
-    // extensions.config.collaboration = { channelId: '<derive from element id + field name>' }
-    // Note: with RTC active, setData()/initialData handling changes (the document state lives in
-    // Cloud Services); revisit the defaultValue effect in editor.tsx when wiring this up.
+    if (cloudServices.tokenUrl === undefined || cloudServices.webSocketUrl === undefined) {
+      console.warn(
+        `${TAG} ckeditor_studio.premium.realtime_collaboration is enabled but token_url and/or web_socket_url ` +
+        'is missing. Skipping real-time collaboration for this editor; the free feature set stays active.'
+      )
+    } else if (options.channelId === null) {
+      console.warn(
+        `${TAG} ckeditor_studio.premium.realtime_collaboration is enabled but no collaboration channel id could ` +
+        'be derived for this field (no open element context or no field name, for example in document editables). ' +
+        'Skipping real-time collaboration for this editor. You can set an explicit ' +
+        'editorConfig.collaboration.channelId per field to opt in.'
+      )
+    } else {
+      extensions.plugins.push(premium.RealTimeCollaborativeEditing)
+      extensions.realtimeCollaborationActive = true
+
+      // Presence list (who is editing this field) when the editor component
+      // rendered a container for it. Remote selections and carets are part of
+      // RealTimeCollaborativeEditing itself.
+      if (options.presenceListContainer !== null && options.presenceListContainer !== undefined) {
+        extensions.plugins.push(premium.PresenceList)
+        extensions.config.presenceList = { container: options.presenceListContainer }
+      }
+    }
+  }
+
+  // Channel id also scopes CKEditor AI chat history and context, so set it
+  // whenever it is known and any premium feature is active.
+  if (options.channelId !== null && (ai.enabled || extensions.realtimeCollaborationActive)) {
+    extensions.config.collaboration = { channelId: options.channelId }
   }
 
   return extensions

@@ -14,10 +14,18 @@ export const CKEditorEditor = forwardRef<WysiwygEditorRef, WysiwygProps>(({
   maxCharacters,
   placeholder,
   editorConfig,
-  context
+  context,
+  ...untypedProps
 }, ref): React.JSX.Element => {
   const editorRef = useRef<WysiwygEditorRef>(null)
   const { styles } = useStyles()
+
+  // Pimcore spreads the full field definition into the wysiwyg component for
+  // data object fields, so `name` (the field name) arrives at runtime although
+  // it is not part of WysiwygProps. Document editables do not pass it. Used to
+  // derive the real-time collaboration channel id.
+  const untypedName = (untypedProps as Record<string, unknown>).name
+  const fieldName = typeof untypedName === 'string' && untypedName !== '' ? untypedName : undefined
 
   useImperativeHandle(ref, (): WysiwygEditorRef => ({
     onDrop: (info: DragAndDropInfo): void => {
@@ -39,6 +47,7 @@ export const CKEditorEditor = forwardRef<WysiwygEditorRef, WysiwygProps>(({
       <Editor
         defaultValue={ value ?? '' }
         editorConfig={ editorConfig }
+        fieldName={ fieldName }
         maxCharacters={ maxCharacters }
         onTextChange={ handleChange }
         placeholder={ placeholder }
