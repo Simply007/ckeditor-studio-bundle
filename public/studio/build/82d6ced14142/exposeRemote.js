@@ -7,7 +7,7 @@
         window.alternativePluginExportPaths = {}
       }
 
-      window.pluginRemotes.ckeditor_studio_bundle = "/bundles/ckeditorstudio/studio/build/e66f1a2fda90/static/js/remoteEntry.js"
+      window.pluginRemotes.ckeditor_studio_bundle = "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/remoteEntry.js"
 
       
     

@@ -1,0 +1,69 @@
+{
+  "allFiles": [
+    "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/main.1ef7574a.js",
+    "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/remoteEntry.js",
+    "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/async/596.ce6ca8d4.js",
+    "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/async/473.3d049f64.js",
+    "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/async/749.6ff9a47f.js",
+    "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/async/34.a4757c2f.js",
+    "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/async/__federation_expose_default_export.12ccb89f.js",
+    "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/async/595.3e261373.js",
+    "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/async/199.690230b2.js",
+    "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/async/158.a02b37cf.js",
+    "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/async/507.f9ecbab2.js",
+    "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/109.bfca2159.js",
+    "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/css/async/613.f3898607.css",
+    "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/css/async/29.8bc6ee06.css",
+    "/bundles/ckeditorstudio/studio/build/82d6ced14142/mf-stats.json",
+    "/bundles/ckeditorstudio/studio/build/82d6ced14142/mf-manifest.json",
+    "/bundles/ckeditorstudio/studio/build/82d6ced14142/main.html"
+  ],
+  "entries": {
+    "main": {
+      "html": [
+        "/bundles/ckeditorstudio/studio/build/82d6ced14142/main.html"
+      ],
+      "initial": {
+        "js": [
+          "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/109.bfca2159.js",
+          "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/main.1ef7574a.js"
+        ]
+      },
+      "async": {
+        "js": [
+          "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/async/507.f9ecbab2.js",
+          "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/async/158.a02b37cf.js",
+          "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/async/34.a4757c2f.js",
+          "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/async/749.6ff9a47f.js",
+          "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/async/473.3d049f64.js",
+          "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/async/596.ce6ca8d4.js"
+        ]
+      }
+    },
+    "ckeditor_studio_bundle": {
+      "initial": {
+        "js": [
+          "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/remoteEntry.js"
+        ]
+      },
+      "async": {
+        "js": [
+          "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/async/507.f9ecbab2.js",
+          "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/async/158.a02b37cf.js",
+          "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/async/199.690230b2.js",
+          "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/async/595.3e261373.js",
+          "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/async/__federation_expose_default_export.12ccb89f.js",
+          "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/async/34.a4757c2f.js",
+          "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/async/749.6ff9a47f.js",
+          "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/async/473.3d049f64.js",
+          "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/js/async/596.ce6ca8d4.js"
+        ],
+        "css": [
+          "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/css/async/29.8bc6ee06.css",
+          "/bundles/ckeditorstudio/studio/build/82d6ced14142/static/css/async/613.f3898607.css"
+        ]
+      }
+    }
+  },
+  "integrity": {}
+}
