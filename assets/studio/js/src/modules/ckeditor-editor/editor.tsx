@@ -26,6 +26,8 @@ import { type WysiwygEditorRef } from '@pimcore/studio-ui-bundle/modules/wysiwyg
 import { type DragAndDropInfo, createImageThumbnailUrl } from '@pimcore/studio-ui-bundle/components'
 import { toCssDimension } from '@pimcore/studio-ui-bundle/utils'
 import { useTranslation } from '@pimcore/studio-ui-bundle/app'
+import { getStudioSettings } from './settings'
+import { resolvePremiumExtensions } from './premium'
 
 interface EditorProps {
   defaultValue?: string
@@ -64,59 +66,63 @@ const Editor = forwardRef<WysiwygEditorRef, EditorProps>(
 
     // The config is created once per mount. The CKEditor React component does not
     // react to config changes after initialization anyway.
-    const config = useMemo((): EditorConfig => ({
-      licenseKey: 'GPL',
-      plugins: [
-        Essentials,
-        Paragraph,
-        Heading,
-        Bold,
-        Italic,
-        Underline,
-        Alignment,
-        Link,
-        List,
-        Indent,
-        BlockQuote,
-        Table,
-        TableToolbar,
-        Image,
-        ImageResize,
-        SourceEditing,
-        GeneralHtmlSupport
-      ],
-      toolbar: [
-        'undo', 'redo', '|',
-        'heading', '|',
-        'bold', 'italic', 'underline', '|',
-        'alignment', '|',
-        'bulletedList', 'numberedList', 'outdent', 'indent', '|',
-        'blockQuote', 'link', 'insertTable', '|',
-        'sourceEditing'
-      ],
-      table: {
-        contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells']
-      },
-      // Preserve Pimcore's element-reference attributes and generic class/id/style
-      // attributes on loaded content (mirrors the Parchment attributors that
-      // pimcore/quill-bundle registers).
-      htmlSupport: {
-        allow: [
-          {
-            name: /^.*$/,
-            attributes: ['pimcore_id', 'pimcore_type', 'pimcore_disable_thumbnail', 'id'],
-            classes: true,
-            styles: true
-          }
-        ]
-      },
-      initialData: defaultValue,
-      ...(placeholder !== '' ? { placeholder } : {}),
-      // Per-field editor configuration from Pimcore (editable / field definition).
-      // Note: in Pimcore 2026.x this is written for Quill; CKEditor ignores unknown
-      // keys, and genuine CKEditor options passed here win over the defaults above.
-      ...(editorConfig ?? {})
-    }), [])
+    const config = useMemo((): EditorConfig => {
+      // License key, toolbar preset and premium gates come from the Symfony bundle
+      // config at runtime (data-app-config); defaults apply when it is absent.
+      const settings = getStudioSettings()
+      const premium = resolvePremiumExtensions(settings)
+
+      return {
+        // 'GPL' (open source feature set) unless a license key is configured.
+        licenseKey: settings.licenseKey,
+        plugins: [
+          Essentials,
+          Paragraph,
+          Heading,
+          Bold,
+          Italic,
+          Underline,
+          Alignment,
+          Link,
+          List,
+          Indent,
+          BlockQuote,
+          Table,
+          TableToolbar,
+          Image,
+          ImageResize,
+          SourceEditing,
+          GeneralHtmlSupport,
+          ...premium.plugins
+        ],
+        toolbar: settings.toolbar,
+        table: {
+          contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells']
+        },
+        // Preserve Pimcore's element-reference attributes and generic class/id/style
+        // attributes on loaded content (mirrors the Parchment attributors that
+        // pimcore/quill-bundle registers).
+        htmlSupport: {
+          allow: [
+            {
+              name: /^.*$/,
+              attributes: ['pimcore_id', 'pimcore_type', 'pimcore_disable_thumbnail', 'id'],
+              classes: true,
+              styles: true
+            }
+          ]
+        },
+        initialData: defaultValue,
+        ...(placeholder !== '' ? { placeholder } : {}),
+        // Premium feature config (scaffolded; empty until premium.ts is wired up).
+        ...premium.config,
+        // Per-field editor configuration from Pimcore (editable / field definition,
+        // merged with pimcore_studio_ui.wysiwyg default_editor_config by Studio core).
+        // Note: in Pimcore 2026.x this is written for Quill; CKEditor ignores unknown
+        // keys, and genuine CKEditor options passed here win over the defaults above.
+        ...(editorConfig ?? {})
+      }
+    }, [])
 
     useEffect(() => {
       const editor = editorInstanceRef.current

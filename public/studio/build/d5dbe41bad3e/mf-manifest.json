@@ -21,7 +21,7 @@
     },
     "globalName": "ckeditor_studio_bundle",
     "pluginVersion": "2.9.3",
-    "publicPath": "/bundles/ckeditorstudio/studio/build/a41f763630cb/"
+    "publicPath": "/bundles/ckeditorstudio/studio/build/d5dbe41bad3e/"
   },
   "shared": [
     {
@@ -34,7 +34,7 @@
         "js": {
           "async": [],
           "sync": [
-            "static/js/async/596.08b1fd0a.js"
+            "static/js/async/596.ce6ca8d4.js"
           ]
         },
         "css": {
@@ -54,7 +54,7 @@
         "js": {
           "async": [],
           "sync": [
-            "static/js/async/507.2a420a68.js"
+            "static/js/async/507.f9ecbab2.js"
           ]
         },
         "css": {
@@ -94,7 +94,7 @@
         "js": {
           "async": [],
           "sync": [
-            "static/js/109.1eae7910.js",
+            "static/js/109.bfca2159.js",
             "static/js/remoteEntry.js"
           ]
         },
@@ -115,7 +115,7 @@
         "js": {
           "async": [],
           "sync": [
-            "static/js/109.1eae7910.js",
+            "static/js/109.bfca2159.js",
             "static/js/remoteEntry.js"
           ]
         },
@@ -172,7 +172,7 @@
       "assets": {
         "js": {
           "sync": [
-            "static/js/async/__federation_expose_default_export.13ceaca5.js"
+            "static/js/async/__federation_expose_default_export.b798d710.js"
           ],
           "async": []
         },
