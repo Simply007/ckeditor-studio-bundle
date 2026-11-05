@@ -137,10 +137,10 @@ docker compose exec php bin/console debug:container --env-var=CKEDITOR_LICENSE_K
 To test the gating with a key: set `CKEDITOR_LICENSE_KEY` in `.env.local`,
 `cache:clear`, reload Studio, and check the editor console for license errors.
 To test a toolbar preset: set `ckeditor_studio.toolbar` in
-`config/packages/ckeditor_studio.yaml`, `cache:clear`, reload Studio. Still
-unproven at runtime: an actual commercial key, and therefore the premium path
-in the browser (the wiring is build-verified; see "Testing premium locally"
-in the README for the manual walkthrough with a trial key).
+`config/packages/ckeditor_studio.yaml`, `cache:clear`, reload Studio. The premium
+path (trial key, token endpoint, CKEditor AI chat round trip, real-time collaboration
+sync between two tabs) was verified live on 2026-11-05; the walkthrough is in the
+README, "Testing premium locally".
 
 ## Out of scope / unproven
 

@@ -238,6 +238,72 @@ and a gate is enabled; CKEditor AI and real-time collaboration are wired.
   "Testing premium locally"): license validation, the AI service round trip, and a
   two-browser collaboration session.
 
+## Step 9: end to end with a real trial, live in Studio (2026-11-05)
+
+Token endpoint in the bundle, trial credentials in `.env.local` (env var names only:
+`CKEDITOR_LICENSE_KEY`, `CKEDITOR_CS_ENVIRONMENT_ID`, `CKEDITOR_CS_ACCESS_KEY`,
+`CKEDITOR_CS_WEBSOCKET_URL`, gates `CKEDITOR_PREMIUM_AI` / `CKEDITOR_PREMIUM_RTC`),
+tested in Chrome on `/blog/hello-ckeditor`.
+
+- Guided by: the CKEditor docs MCP again, decisively. The token claim shape
+  (`aud` = environment id, `iat`, `exp`, `sub`, `user`, `auth.collaboration`) matched
+  Ondrej's earlier blockspace token worker, but blockspace only grants collaboration.
+  The AI half (`auth.ai.permissions`, the "end user" profile, the warning that a
+  misspelled scope signs fine and grants nothing, and the zero-cost
+  `GET https://ai.cke-cs.com/v1/models/1` token check) came from the Cloud Services AI
+  authentication and permissions guides. That models call returned `agent-1`
+  allowed before any browser was opened, which made the later browser debugging
+  fast: the token was known good. The vendored `ckeditor` skill has nothing on token
+  endpoints or AI permissions (its licensing reference stops at "obtain credentials
+  in the portal").
+- Pimcore side, no skill: route ownership. A bundle route is auto-loaded from
+  `<bundle>/config/pimcore/routing.yaml` (Pimcore's `BundleRoutingLoader` +
+  `BundleConfigLocator`, found in vendor source). Placing the route under
+  `/pimcore-studio/api` reuses Studio's firewall and the `ROLE_PIMCORE_USER`
+  access rule from the skeleton's `security.yaml`, so "only authenticated Studio
+  users" needed no security code of our own (`#[IsGranted]` added as a second line).
+  Anonymous request: `401`. None of the 33 official skills covers adding a backend
+  endpoint that rides on the Studio session.
+- Live failure 1, `ai-missing-channel-id` (editor mount crashed): Studio passes the
+  data object field `name` as a form path ARRAY (`['content']`), not a string, so
+  the step 8 derivation silently produced null. Found only by walking the React
+  fiber of the mounted component in the browser. The usable prop is
+  `combinedFieldName` (`'content'`, dotted for nested fields). Second lesson: CKEditor
+  AI hard-requires `collaboration.channelId` even without collaboration, and the
+  error takes the whole editor down instead of disabling AI. Fallback added: a
+  per-mount random id for AI when nothing is derivable. Neither fact is in a skill;
+  the AI integration guide mentions channelId only in passing in its sample.
+- Live failure 2, blocked network (AI `ai-request-failed` with an empty original
+  error, then `cloudservices-init` "number of initial connection attempts exceeded"):
+  Pimcore Studio's Content Security Policy `connect-src` allows only `'self'` and a
+  few Pimcore hosts, so the browser never sent the AI or WebSocket requests (they do
+  not even show in the network log). The CKEditor error messages point at "Internet
+  connection, antivirus or firewall", not at CSP, which is the real cause in any
+  CSP-hardened host. Fix: a bundle subscriber on Studio's `CspEvent` adds the Cloud
+  Services origins and the license usage endpoint, only while premium is active.
+  Studio's `CspEvent` and `ContentSecurityPolicyHandlerInterface::addAllowedUrls()`
+  are undocumented in the Pimcore skills (vendor source again). Worth a line in both
+  skill families: "premium features call *.cke-cs.com and wss://*.cke-cs.com from
+  the browser; whitelist them in connect-src."
+- Found statically before the test, which would have been live failure 3: the free
+  `SourceEditing` plugin throws `source-editing-incompatible-with-real-time-collaboration`
+  next to `RealTimeCollaborativeEditing` unless
+  `sourceEditing.allowCollaborationFeatures` is set (spotted by grepping the built
+  chunk for the RTC plugin name). The default toolbar includes source editing, so
+  every RTC-enabled field would have crashed.
+- Verified live (screenshots kept outside the repo): trial license notice in the
+  console with no license error; token endpoint `200` with the Studio session;
+  AI panel in Studio's side panel, AI and AI Quick Actions buttons in the toolbar, a
+  chat round trip summarizing the current post; presence list with the Pimcore user
+  from the token `sub`; channel `pimcore-data-object-3-content`; an edit in a second
+  tab appeared live in the first, and Studio marked the object modified. Two tabs of
+  one Pimcore user show one avatar (expected de-duplication); a second Pimcore user
+  would show two. Gates off: Studio's CSP back to its original `connect-src`.
+- Secret hygiene note for the talk: the CKEditor AI init error serializes the whole
+  editor config into the console, license key included. Harmless (license keys are
+  public by design), but anyone pasting console logs into an issue or an agent chat
+  should know it.
+
 ## The 3 biggest skill gaps (summary)
 
 1. No skill documents the wysiwyg editor extension point (`componentConfig.wysiwyg.editor`

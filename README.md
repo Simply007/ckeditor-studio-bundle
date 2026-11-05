@@ -7,10 +7,11 @@ this bundle mirrors.
 
 Status: the core integration is runtime-tested end to end on the demo stack (see
 `TESTING.md`); the runtime configuration described below is build-tested and
-statically verified. The premium feature path (CKEditor AI, real-time collaboration)
-is wired for real behind dynamic imports and verified at the build level; exercising
-it in the browser needs a license key (see "Testing premium locally"). Experiment log
-on the agent skills used to build it: see `SKILL-FINDINGS.md`.
+statically verified. The premium feature path (CKEditor AI, real-time collaboration,
+with the bundle's own Cloud Services token endpoint) is loaded on demand behind
+dynamic imports and was verified live in Studio with a trial key (see "Testing
+premium locally"). Experiment log on the agent skills used to build it: see
+`SKILL-FINDINGS.md`.
 
 ## What it does
 
@@ -139,8 +140,8 @@ BlockQuote, Table, Image, ImageResize, SourceEditing, GeneralHtmlSupport). Unkno
 items are skipped by CKEditor with a console warning, nothing breaks. Adding an item
 that needs a new plugin means adding the plugin in
 `assets/studio/js/src/modules/ckeditor-editor/editor.tsx` and rebuilding. The AI
-toolbar items (`toggleAi`, `aiQuickActions`, `ask-ai`, `improve-writing`) are backed
-by the premium gates below and work once those are active.
+gate appends its own toolbar buttons (`toggleAi`, `aiQuickActions`); other AI items
+(`ask-ai`, `improve-writing`) can be added here once the gate is on.
 
 Per-field tweaks remain possible: whatever a field definition or
 `pimcore_studio_ui.wysiwyg.default_editor_config` passes as `editorConfig` is spread
@@ -153,93 +154,155 @@ Two premium features are wired behind config gates: CKEditor AI and real-time
 collaboration. The premium code (`ckeditor5-premium-features`, pinned to the exact
 same version as `ckeditor5`) is loaded by the browser through a dynamic import ONLY
 when both a license key is configured and at least one gate is enabled. With no key,
-or with the gates off, the editor initializes exactly as the plain open source build
-and no premium chunk is even fetched (the premium code and CSS live in their own
-async chunks). A gate whose prerequisites are missing logs a console warning and
-keeps the free feature set, so a misconfigured instance never breaks. The wiring
-lives in `assets/studio/js/src/modules/ckeditor-editor/premium.ts`.
+or with the gates off, the editor initializes exactly as the plain open source build,
+no premium chunk is even fetched (the premium code and CSS live in their own async
+chunks), and Studio's Content Security Policy stays untouched. A gate whose
+prerequisites are missing logs a console warning and keeps the free feature set, so
+a misconfigured instance never breaks. The wiring lives in
+`assets/studio/js/src/modules/ckeditor-editor/premium.ts`.
+
+This repository commits `config/packages/ckeditor_studio.yaml` with both gates
+driven by environment variables that default to off:
 
 ```yaml
+parameters:
+  env(CKEDITOR_PREMIUM_AI): '0'
+  env(CKEDITOR_PREMIUM_RTC): '0'
+
 ckeditor_studio:
-  license_key: '%env(CKEDITOR_LICENSE_KEY)%'   # required for any premium feature
-  # Premium UI buttons are toolbar items like everything else; add what you enable:
-  toolbar: ['undo', 'redo', '|', 'bold', 'italic', 'link', '|', 'toggleAi', 'aiQuickActions']
   premium:
     ai:
-      enabled: true
-      # Raw CKEditor "ai" configuration, passed through as the editor "ai" option
-      # and merged over the default UI placement { container: { type: 'overlay' } }.
-      # Use it for the AI service options (serviceUrl, chat context, ...) or a
-      # legacy AI Assistant adapter configuration.
-      config: {}
+      enabled: '%env(bool:CKEDITOR_PREMIUM_AI)%'
+      # Optional raw CKEditor "ai" configuration, merged over the default UI
+      # placement { container: { type: 'overlay' } } (serviceUrl, chat, ...).
+      # config: {}
     realtime_collaboration:
-      enabled: true
-      # CKEditor Cloud Services credentials (from the portal / your environment),
-      # both required when enabled. token_url also authenticates CKEditor AI, so
-      # set it for the AI gate too, even when this gate stays off.
-      token_url: 'https://<environment>.cke-cs.com/token/dev/<id>'
-      web_socket_url: 'wss://<organization>.cke-cs.com/ws'
+      enabled: '%env(bool:CKEDITOR_PREMIUM_RTC)%'
+      # Leave both null to use the bundle's own token endpoint and
+      # CKEDITOR_CS_WEBSOCKET_URL; set them to point at your own services.
+      # token_url: ~
+      # web_socket_url: ~
 ```
+
+The full set of environment variables the bundle reads (all optional, all empty by
+default; set them in `.env.local` or your secret store, never in committed files):
+
+| Variable | Used for |
+|---|---|
+| `CKEDITOR_LICENSE_KEY` | `licenseKey` in the browser; empty means `'GPL'` |
+| `CKEDITOR_CS_ENVIRONMENT_ID` | Cloud Services environment id, the token `aud` claim (server side) |
+| `CKEDITOR_CS_ACCESS_KEY` | Cloud Services access key, signs the tokens (server side only, never sent to the browser) |
+| `CKEDITOR_CS_WEBSOCKET_URL` | Cloud Services WebSocket URL for real-time collaboration |
+| `CKEDITOR_PREMIUM_AI` | gate: CKEditor AI (`1` / `0`, via the yaml above) |
+| `CKEDITOR_PREMIUM_RTC` | gate: real-time collaboration (`1` / `0`, via the yaml above) |
 
 What turning each gate on does (with a license key configured):
 
-- `premium.ai.enabled: true` loads the CKEditor AI plugin set (`AIEditorIntegration`,
-  `AIChat`, `AIChatShortcuts`, `AIQuickActions`, `AIReviewMode`, `AITranslate`) and
-  passes `premium.ai.config` through as the CKEditor `ai` option, merged over the
-  default `container: { type: 'overlay' }`. Add the AI buttons you want to
-  `ckeditor_studio.toolbar` (`toggleAi`, `aiQuickActions`, `ask-ai`,
-  `improve-writing`). The AI service authenticates through the Cloud Services token
-  endpoint (`premium.realtime_collaboration.token_url`), which is used for AI even
-  when the collaboration gate is off.
-- `premium.realtime_collaboration.enabled: true` loads
-  `RealTimeCollaborativeEditing` (remote carets and selections included) plus a
-  presence list rendered above the editor, with `cloudServices` built from
-  `token_url` and `web_socket_url`. The collaboration `channelId` is derived per
-  field as `pimcore-<elementType>-<elementId>-<fieldName>` from the open Studio
-  element and the field name, so every wysiwyg field of every element collaborates
-  on its own channel. Data object wysiwyg fields get this automatically; document
-  editables do not receive the editable name from Studio core, so they skip
-  collaboration with a console warning unless the per-field `editorConfig` provides
-  an explicit `collaboration.channelId` (an explicit id always wins). With
-  collaboration active, the document state lives in Cloud Services and the editor
-  stops applying external value resets.
+- `premium.ai.enabled` loads the CKEditor AI plugin set (`AIEditorIntegration`,
+  `AIChat`, `AIChatShortcuts`, `AIQuickActions`, `AIReviewMode`, `AITranslate`),
+  passes `premium.ai.config` through as the CKEditor `ai` option (default
+  `container: { type: 'overlay' }`, which Studio shows as a docked side panel), and
+  appends the `toggleAi` and `aiQuickActions` buttons to the toolbar (they cannot sit
+  in the yaml toolbar, because the free path has no plugin behind them). The AI
+  service authenticates with the Cloud Services token, so it needs the token endpoint
+  even when the collaboration gate is off.
+- `premium.realtime_collaboration.enabled` loads `RealTimeCollaborativeEditing`
+  (remote carets and selections included) plus a presence list rendered above the
+  editor, with `cloudServices` built from the token endpoint and the WebSocket URL.
+  It also sets `sourceEditing.allowCollaborationFeatures: true`, because the free
+  SourceEditing plugin otherwise refuses to start next to real-time collaboration.
+  With collaboration active, the document state lives in Cloud Services and the
+  editor stops applying external value resets; changes still flow back into the
+  Pimcore form (the object shows as modified and saves normally).
+
+Collaboration channel id: derived per field as
+`pimcore-<elementType>-<elementId>-<fieldName>` from the open Studio element and the
+field identity Studio passes to the wysiwyg slot (`combinedFieldName`, so nested
+fields such as localized fields stay unique), for example
+`pimcore-data-object-3-content`. An explicit per-field `editorConfig.collaboration.channelId`
+always wins. Document editables receive no field name from Studio core: they skip
+collaboration with a console warning, and for CKEditor AI (which refuses to start
+without a channel id) they get a per-mount random id, so AI works there but chat
+history does not survive a reload.
+
+### Cloud Services token endpoint
+
+The bundle ships its own token endpoint:
+`GET /pimcore-studio/api/ckeditor-studio/cs-token` (route `ckeditor_studio_cs_token`).
+
+- Lives under `/pimcore-studio/api`, so the Studio firewall and its
+  `ROLE_PIMCORE_USER` access rule apply: anonymous requests get `401`, and the editor
+  fetches the token with the Studio session cookie (same origin).
+- Returns a plain-text HS256 JWT signed with `CKEDITOR_CS_ACCESS_KEY`: `aud` =
+  `CKEDITOR_CS_ENVIRONMENT_ID`, `sub` = the Pimcore user id, `user.name` (first and
+  last name, falling back to the username) and `user.email`, `iat`/`exp` (1 hour),
+  `auth.collaboration` = `{"*": {"role": "writer"}}` (demo scope: every channel), and
+  `auth.ai.permissions` = the "end user" profile from the CKEditor AI docs
+  (`ai:conversations:read`, `ai:conversations:write`, `ai:actions:*`, `ai:reviews:*`,
+  `ai:models:agent`). Narrow both for production.
+- Returns `503` when the Cloud Services variables are not set. When they are set and
+  `premium.realtime_collaboration.token_url` is null, the editor's `tokenUrl`
+  defaults to this route automatically.
+- The access key never leaves the server; only the token URL reaches the browser.
+
+Studio's CSP: Pimcore Studio sends a strict `connect-src`, which blocks the browser's
+calls to Cloud Services (AI over HTTPS, collaboration over a WebSocket) and the
+license usage endpoint. A bundle `CspEvent` subscriber adds `https://*.cke-cs.com`,
+`wss://*.cke-cs.com`, the `cke-cs-eu.com` equivalents and
+`https://proxy-event.ckeditor.com` to `connect-src`, only while a license key is set
+and a gate is on.
 
 ### Testing premium locally
 
 A free trial from [portal.ckeditor.com](https://portal.ckeditor.com/) (no credit
 card) provides everything the gates need: a trial license key covering the premium
-features, and a Cloud Services trial environment with a development token endpoint
-and WebSocket URL. Keys are channel-scoped; this bundle self-hosts via npm, so use a
-self-hosted key. Then:
+features, and a Cloud Services environment (environment id, an access key you create
+in the portal, the WebSocket URL). Keys are channel-scoped; this bundle self-hosts
+via npm, so use a key valid for self-hosted use. Then:
 
-1. Put the key in `.env.local` (never commit real keys):
+1. Put the values in `.env.local` (gitignored, never commit them):
 
    ```bash
-   CKEDITOR_LICENSE_KEY=<key from portal.ckeditor.com>
+   CKEDITOR_LICENSE_KEY=<license key>
+   CKEDITOR_CS_ENVIRONMENT_ID=<environment id>
+   CKEDITOR_CS_ACCESS_KEY=<access key>
+   CKEDITOR_CS_WEBSOCKET_URL=<wss://...cke-cs.com/ws>
+   CKEDITOR_PREMIUM_AI=1
+   CKEDITOR_PREMIUM_RTC=1
    ```
 
-2. Enable the gates in `config/packages/ckeditor_studio.yaml` as in the yaml above,
-   with the `token_url` and `web_socket_url` from the trial's Cloud Services
-   environment, and add the AI toolbar items.
-3. `docker compose exec php bin/console cache:clear`. No frontend rebuild: the gates
-   are runtime configuration read from the Studio shell page.
-4. Open a data object with a wysiwyg field in Studio. Expect: the network tab shows
-   the premium chunks loading only now; the AI button appears in the toolbar; a
-   second browser window on the same object shows live remote cursors and the
-   presence list. With the key removed again, none of the premium chunks load.
+2. `docker compose exec php bin/console cache:clear`. No frontend rebuild and no yaml
+   change: the gates and URLs are runtime configuration read from the Studio shell page.
+3. Open a data object with a wysiwyg field in Studio (in this repo: `/blog/hello-ckeditor`,
+   field Content).
+
+What to expect (verified live on 2026-11-05 with a long-term trial, Chrome):
+
+- The console shows CKEditor's trial license notice and no license error.
+- The premium chunks load only now; the token endpoint returns `200` for the logged-in
+  user.
+- The AI panel opens in the Studio side panel; the toolbar carries the AI and AI
+  Quick Actions buttons. A chat message such as "Summarize this document in one
+  sentence." returns an answer about the current document.
+- The presence list above the toolbar shows the current user (the Pimcore user from
+  the token's `sub`), the channel id is `pimcore-data-object-3-content`, and an edit
+  made in a second tab on the same object appears live in the first one. Two tabs of
+  the SAME Pimcore user show one avatar; log in as a second Pimcore user to see two.
+- Set both gates back to `0` (or remove the key) and `cache:clear`: no premium chunk
+  loads and Studio's CSP is back to its original `connect-src`.
 
 Backend prerequisites beyond the key, with pointers:
 
-- CKEditor AI needs the AI service available to your Cloud Services environment
-  (trial environments include it) and the token endpoint configured as above; see
-  the [CKEditor AI integration guide](https://ckeditor.com/docs/ckeditor5/latest/features/ai/ckeditor-ai-integration.html)
-  and [Cloud Services AI authentication](https://ckeditor.com/docs/cs/latest/guides/ckeditor-ai/authentication.html).
-  Alternatively, a legacy AI Assistant adapter (own endpoint) can be configured
-  entirely through `premium.ai.config`.
-- Real-time collaboration needs a Cloud Services environment (cloud trial or
-  on-premises); see the [Cloud Services collaboration quick start](https://ckeditor.com/docs/cs/latest/guides/collaboration/quick-start.html)
-  and, for production, a [token endpoint you host](https://ckeditor.com/docs/cs/latest/developer-resources/security/token-endpoint.html)
-  (the portal's development token endpoint is for development only).
+- CKEditor AI needs the AI service on your Cloud Services environment (trial
+  environments include it) and a token with `auth.ai.permissions`; see the
+  [CKEditor AI integration guide](https://ckeditor.com/docs/ckeditor5/latest/features/ai/ckeditor-ai-integration.html),
+  [CKEditor AI authentication](https://ckeditor.com/docs/cs/latest/guides/ckeditor-ai/authentication.html)
+  and [permissions](https://ckeditor.com/docs/cs/latest/guides/ckeditor-ai/permissions.html).
+  The default AI service URL is the US region; for an EU environment set
+  `premium.ai.config.serviceUrl` to `https://ai.cke-cs-eu.com/v1`.
+- Real-time collaboration needs the Cloud Services environment and a token with
+  `auth.collaboration`; see the [token endpoint guide](https://ckeditor.com/docs/cs/latest/developer-resources/security/token-endpoint.html)
+  and the [collaboration quick start](https://ckeditor.com/docs/cs/latest/guides/collaboration/quick-start.html).
 
 ## Limitations
 
@@ -250,12 +313,12 @@ Backend prerequisites beyond the key, with pointers:
   `config/bundles.php`). Tracked as
   [issue #2](https://github.com/Simply007/pcdd26-pimcore-ai-guidepost/issues/2)
   (configurable editor selection).
-- The premium path is verified at the build level (type check, chunk graph, config
-  injection); browser verification with a real trial key is a manual step (see
-  "Testing premium locally").
 - Document editables derive no collaboration channel id by default (Studio core does
   not pass the editable name); real-time collaboration there needs an explicit
-  per-field `collaboration.channelId`.
+  per-field `collaboration.channelId`, and AI chat history there lasts one mount.
+- The token endpoint grants every Studio user writer access to every channel and the
+  AI end-user profile. Fine for a demo; production should map Pimcore permissions to
+  per-channel roles.
 - Pimcore's per-field `editorConfig` is Quill-shaped in 2026.x; no mapping to
   CKEditor options is implemented (pass-through only).
 - Dropping an element onto selected text applies only `href`, not the `pimcore_id` /
@@ -266,8 +329,10 @@ Backend prerequisites beyond the key, with pointers:
 
 ```
 composer.json                PHP package (type: pimcore-bundle, PSR-4 Chrastina\CKEditorStudioBundle)
-src/                         Bundle class, configuration, app config provider, entry point provider
+src/                         Bundle class, configuration, app config provider, entry point provider,
+                             Cloud Services token generator + controller, premium CSP subscriber
 config/studio_ui.yaml        Tags the providers for Studio UI (incl. document editor iframe)
+config/pimcore/routing.yaml  Token endpoint route (auto-loaded by Pimcore's bundle routing loader)
 assets/studio/               TypeScript frontend (rsbuild + module federation, port 3033)
 public/studio/build/<id>/    Committed frontend build (entrypoints.json consumed by PHP)
 ```
