@@ -23,6 +23,8 @@ export interface PremiumExtensions {
   realtimeCollaborationActive: boolean
   /** Toolbar items the active premium features add (appended unless already present). */
   toolbarItems: string[]
+  /** Releases shared resources (the element's shared AI Context) on unmount. */
+  release?: () => void
 }
 
 /** The no-premium result: shared by the GPL path and every fallback. */
@@ -68,6 +70,16 @@ export interface PremiumLoadOptions {
   channelId: string | null
   /** Container element for the presence list UI, rendered by the editor component. */
   presenceListContainer?: HTMLElement | null
+  /**
+   * The Pimcore element this editor belongs to. With CKEditor AI on, every
+   * editor of the same element shares one CKEditor Context (one chat that sees
+   * all fields); null falls back to a per-editor AI setup.
+   */
+  element?: { type: string, id: number | string } | null
+  /** A DOM element of this editor (its wrapper), used to place the docked AI panel. */
+  anchor?: HTMLElement | null
+  /** Human readable field name and purpose, read by CKEditor AI to tell fields apart. */
+  root?: { title: string, description: string } | null
 }
 
 /**
@@ -108,27 +120,10 @@ export const loadPremiumExtensions = async (
     extensions.config.cloudServices = cloudServices
   }
 
+  const sharedAI = ai.enabled && options.element !== null && options.element !== undefined &&
+    options.anchor !== null && options.anchor !== undefined
+
   if (ai.enabled) {
-    extensions.plugins.push(
-      // AIEditorIntegration is the required core integration (ships the
-      // 'toggleAi' toolbar button); the rest are the standalone AI features.
-      premium.AIEditorIntegration,
-      premium.AIChat,
-      premium.AIChatShortcuts,
-      premium.AIQuickActions,
-      premium.AIReviewMode,
-      premium.AITranslate
-    )
-
-    // The AI UI needs a container; 'overlay' works without a dedicated DOM
-    // element, which fits the Studio detail view. Everything from
-    // ckeditor_studio.premium.ai.config is spread over it, so integrators can
-    // override the container or add adapter, chat, serviceUrl, ... options.
-    extensions.config.ai = {
-      container: { type: 'overlay' },
-      ...ai.config
-    } as EditorConfig['ai']
-
     // The AI buttons only exist with the AI plugins loaded, so they are added
     // here instead of in the yaml toolbar (which would warn on the free path).
     // 'toggleAi' opens the AI panel (chat), 'aiQuickActions' the quick actions.
@@ -142,6 +137,59 @@ export const loadPremiumExtensions = async (
         'premium.ai.config provides its own authentication (for example a legacy AI Assistant adapter).'
       )
     }
+
+    if (options.root !== null && options.root !== undefined) {
+      // CKEditor AI addresses fields by root title and description in
+      // multi-editor setups; without them an edit may land in the wrong field.
+      extensions.config.root = { title: options.root.title, description: options.root.description } as EditorConfig['root']
+    }
+  }
+
+  if (sharedAI) {
+    // Multi-editor setup: the AI feature plugins and ai.container live on one
+    // shared Context per element (ai-context.ts); each editor keeps only the
+    // editor integration and quick actions.
+    const element = options.element as { type: string, id: number | string }
+    const { acquireSharedContext } = await import('./ai-context')
+    const shared = acquireSharedContext(premium, {
+      key: `pimcore-${element.type}-${element.id}`,
+      anchor: options.anchor as HTMLElement,
+      licenseKey: settings.licenseKey,
+      cloudServices,
+      aiConfig: ai.config,
+      container: ai.container,
+      presence: rtc.enabled && cloudServices.tokenUrl !== undefined && cloudServices.webSocketUrl !== undefined
+    })
+    extensions.release = shared.release
+
+    try {
+      extensions.config.context = await shared.contextPromise
+    } catch (error) {
+      shared.release()
+      throw error
+    }
+
+    extensions.plugins.push(premium.AIEditorIntegration, premium.AIQuickActions)
+  } else if (ai.enabled) {
+    // Single-editor fallback (no element known): the full AI plugin set on the
+    // editor itself, as before.
+    extensions.plugins.push(
+      // AIEditorIntegration is the required core integration (ships the
+      // 'toggleAi' toolbar button); the rest are the standalone AI features.
+      premium.AIEditorIntegration,
+      premium.AIChat,
+      premium.AIChatShortcuts,
+      premium.AIQuickActions,
+      premium.AIReviewMode,
+      premium.AITranslate
+    )
+
+    // Without a shared panel there is no host element for the sidebar mode, so
+    // this fallback always floats the AI UI as an overlay.
+    extensions.config.ai = {
+      container: { type: 'overlay' },
+      ...ai.config
+    } as EditorConfig['ai']
   }
 
   if (rtc.enabled) {
@@ -169,8 +217,9 @@ export const loadPremiumExtensions = async (
 
       // Presence list (who is editing this field) when the editor component
       // rendered a container for it. Remote selections and carets are part of
-      // RealTimeCollaborativeEditing itself.
-      if (options.presenceListContainer !== null && options.presenceListContainer !== undefined) {
+      // RealTimeCollaborativeEditing itself. With the shared AI Context the
+      // presence list lives once on the Context (in the docked AI panel).
+      if (!sharedAI && options.presenceListContainer !== null && options.presenceListContainer !== undefined) {
         extensions.plugins.push(premium.PresenceList)
         extensions.config.presenceList = { container: options.presenceListContainer }
       }

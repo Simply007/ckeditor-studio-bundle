@@ -15,6 +15,8 @@ export interface CKEditorStudioPremiumSettings {
     enabled: boolean
     /** Raw CKEditor "ai" configuration (adapter, model, ...), passed through from yaml. */
     config: Record<string, unknown>
+    /** Where the AI UI renders: a docked panel next to the content (default) or a floating overlay. */
+    container: 'sidebar' | 'overlay'
   }
   realtimeCollaboration: {
     enabled: boolean
@@ -39,7 +41,7 @@ interface CKEditorStudioAppConfig {
   licenseKey?: string | null
   toolbar?: unknown
   premium?: {
-    ai?: { enabled?: boolean, config?: Record<string, unknown> }
+    ai?: { enabled?: boolean, config?: Record<string, unknown>, container?: string }
     realtimeCollaboration?: { enabled?: boolean, tokenUrl?: string | null, webSocketUrl?: string | null }
   }
 }
@@ -59,7 +61,7 @@ export const DEFAULT_TOOLBAR: string[] = [
 ]
 
 const DEFAULT_PREMIUM: CKEditorStudioPremiumSettings = {
-  ai: { enabled: false, config: {} },
+  ai: { enabled: false, config: {}, container: 'sidebar' },
   realtimeCollaboration: { enabled: false, tokenUrl: null, webSocketUrl: null }
 }
 
@@ -79,7 +81,8 @@ export const getStudioSettings = (): CKEditorStudioSettings => {
     premium: {
       ai: {
         enabled: raw.premium?.ai?.enabled === true,
-        config: raw.premium?.ai?.config ?? DEFAULT_PREMIUM.ai.config
+        config: raw.premium?.ai?.config ?? DEFAULT_PREMIUM.ai.config,
+        container: raw.premium?.ai?.container === 'overlay' ? 'overlay' : 'sidebar'
       },
       realtimeCollaboration: {
         enabled: raw.premium?.realtimeCollaboration?.enabled === true,

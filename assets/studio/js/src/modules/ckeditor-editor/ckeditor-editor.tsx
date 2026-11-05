@@ -59,6 +59,7 @@ export const CKEditorEditor = forwardRef<WysiwygEditorRef, WysiwygProps>(({
         defaultValue={ value ?? '' }
         editorConfig={ editorConfig }
         fieldName={ fieldName }
+        fieldTitle={ typeof (untypedProps as Record<string, unknown>).title === 'string' ? (untypedProps as Record<string, string>).title : undefined }
         maxCharacters={ maxCharacters }
         onTextChange={ handleChange }
         placeholder={ placeholder }

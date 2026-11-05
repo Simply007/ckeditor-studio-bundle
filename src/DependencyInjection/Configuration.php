@@ -21,6 +21,7 @@ use Symfony\Component\Config\Definition\ConfigurationInterface;
  *     ai:
  *       enabled: false
  *       config: {}                               # raw CKEditor "ai" config (adapter etc.), passed through
+ *       container: sidebar                       # sidebar (docked panel) | overlay
  *     realtime_collaboration:
  *       enabled: false
  *       token_url: null                          # null = bundle token endpoint when cloud_services is set
@@ -85,6 +86,14 @@ final class Configuration implements ConfigurationInterface
                                 ->variableNode('config')
                                     ->info('Raw CKEditor "ai" configuration (adapter, model, endpoints). Passed to the frontend as-is.')
                                     ->defaultValue([])
+                                ->end()
+                                ->enumNode('container')
+                                    ->info(
+                                        'Where the AI UI renders: "sidebar" docks one AI panel per element next to the content '
+                                        . '(pushes the content aside), "overlay" floats it over the page.'
+                                    )
+                                    ->values(['sidebar', 'overlay'])
+                                    ->defaultValue('sidebar')
                                 ->end()
                             ->end()
                         ->end()

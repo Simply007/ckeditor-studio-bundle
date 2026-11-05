@@ -76,6 +76,7 @@ final class StudioAppConfigProvider implements AppConfigProviderInterface
                     'ai' => [
                         'enabled' => (bool) ($ai['enabled'] ?? false),
                         'config' => (object) ($ai['config'] ?? []),
+                        'container' => ($ai['container'] ?? 'sidebar') === 'overlay' ? 'overlay' : 'sidebar',
                     ],
                     'realtimeCollaboration' => [
                         'enabled' => (bool) ($rtc['enabled'] ?? false),
