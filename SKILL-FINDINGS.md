@@ -369,6 +369,35 @@ tested in Chrome on `/blog/hello-ckeditor`.
   widths (the window resize call did not change the viewport) and the `overlay`
   option.
 
+## Step 12: configurable editor selection, issue #2 (2026-11-05)
+
+- Guided by: NO skill. The answer came from three Studio source files:
+  `core/app/plugin-system/plugin-system.ts` (`IAbstractPlugin.priority`, plugins
+  sorted ascending before `onStartup`), `core/app/module-system/module-system.ts`
+  (modules initialize in registration order) and `core/modules/wysiwyg/index.ts`
+  (the built-in editor is registered by a core module that is registered at import
+  time, so it is always first). Together they make the "last override wins" order
+  deterministic and controllable. `pimcore-studio-ui-using-sdk-in-bundles` mentions
+  neither plugin `priority` nor that one remote may export several plugins (the
+  loader registers every exported plugin object), and both facts carry the fix.
+- Result: probe plugin at priority -1000 records Studio's built-in editor, selector
+  plugin at 1000 applies `ckeditor_studio.editor` (`ckeditor` | `quill` | `default`)
+  after every other editor bundle. PimcoreQuillBundle is enabled again in
+  `config/bundles.php`. Detecting "Quill is present" needs no Quill import: any slot
+  component that is neither Studio's recorded built-in nor CKEditor counts as
+  "another editor bundle".
+- Verified live with both bundles enabled and cache:clear as the only step between
+  switches: `editor: ckeditor` rendered CKEditor while Quill's remote loaded (Quill's
+  own "Hello from quill." log in the console); `editor: quill` rendered Quill on
+  object 3 and on all five editables of the Home document (editmode iframe).
+  Not verified live: the fallback (`quill` with PimcoreQuillBundle disabled, which
+  should render CKEditor and log a warning) and `default`; the browser extension
+  disconnected during that run. The fallback branch is the same code path that
+  rendered CKEditor before Quill was enabled.
+- Upstream angle unchanged: the registry still has no arbitration, this only wins
+  the order race on purpose. A priority-aware "editor provider" in Studio would
+  make the probe unnecessary.
+
 ## The 3 biggest skill gaps (summary)
 
 1. No skill documents the wysiwyg editor extension point (`componentConfig.wysiwyg.editor`

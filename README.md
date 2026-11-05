@@ -63,14 +63,40 @@ docker compose exec php bin/console assets:install --symlink
 docker compose exec php bin/console cache:clear
 ```
 
-Then disable other wysiwyg editor bundles (see Limitations) and open Studio: wysiwyg
-fields render CKEditor.
+Other editor bundles (for example PimcoreQuillBundle) can stay enabled; pick the
+editor with `ckeditor_studio.editor` (see "Editor selection") and open Studio: wysiwyg
+fields render the selected editor.
 
 ## Configuration
 
 All configuration lives under the `ckeditor_studio` key, for example in
 `config/packages/ckeditor_studio.yaml`. Everything is optional; with no config at all
 the editor runs the open source feature set with the default toolbar.
+
+### Editor selection
+
+Several wysiwyg editor bundles can stay enabled side by side; one value decides which
+editor Studio uses:
+
+```yaml
+ckeditor_studio:
+  editor: ckeditor   # ckeditor (default) | quill | default
+```
+
+- `ckeditor`: this bundle's editor.
+- `quill`: the editor another bundle registered (PimcoreQuillBundle); when no other
+  editor bundle is enabled, it falls back to CKEditor with a console warning.
+- `default`: Studio's built-in editor.
+
+Switching needs only `cache:clear` (the value reaches the browser through the app
+config, no rebuild). How it works: Studio's component registry has no arbitration
+(the last `override()` of the `wysiwyg.editor` slot wins), but its order is
+deterministic: Studio registers its built-in editor first, then plugin modules
+initialize in ascending plugin `priority`. This bundle ships two plugins, a probe at
+priority -1000 that records Studio's built-in editor before any editor bundle runs,
+and the selector at priority 1000 that runs after every other editor bundle and
+applies the configured choice. Applies to data object fields and document editables
+(the editmode iframe bootstraps plugins the same way).
 
 ### License key gating
 
@@ -348,13 +374,11 @@ Backend prerequisites beyond the key, with pointers:
 
 ## Limitations
 
-- Registry has no arbitration: every editor bundle overrides the same
-  `wysiwyg.editor` slot and the last `override()` call wins, in entry point
-  registration order, which is not guaranteed. Other editor bundles must therefore be
-  disabled (this repo sets `PimcoreQuillBundle => ['all' => false]` in
-  `config/bundles.php`). Tracked as
-  [issue #2](https://github.com/Simply007/pcdd26-pimcore-ai-guidepost/issues/2)
-  (configurable editor selection).
+- Editor selection relies on plugin priorities (this bundle at -1000 and 1000). An
+  editor bundle that also uses an extreme priority could still race it; Studio itself
+  has no slot arbitration (see
+  [issue #2](https://github.com/Simply007/pcdd26-pimcore-ai-guidepost/issues/2) for the
+  upstream angle). Per-class or per-field editor choice is not implemented.
 - Document editables are identified from the editmode iframe DOM
   (`#pimcore_editable_<name>`, `window.pimcore_document_id`) because Studio core passes
   neither; a Pimcore change to that markup would need a matching change here.
