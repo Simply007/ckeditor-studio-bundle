@@ -1,10 +1,6 @@
 /* #__PURE__ -- @preserve */
 
-/* istanbul ignore else -- @preserve */
-
 /* istanbul ignore file -- @preserve */
-
-/* istanbul ignore if -- @preserve */
 
 /* istanbul ignore if: defensive guard for the `ModelRange | null` return type -- @preserve */
 
@@ -24,8 +20,6 @@
 
 /* v8 ignore next 6 -- @preserve */
 
-/* v8 ignore next: paranoid check -- @preserve */
-
 /* v8 ignore start -- @preserve */
 
 /* v8 ignore stop -- @preserve */
@@ -38,9 +32,4 @@
 /**
 * @license Copyright (c) 2003-2026, CKSource Holding sp. z o.o. All rights reserved.
 * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-licensing-options
-*/
-
-/**
-* @license Copyright (c) 2023, Koala Interactive SAS
-* For licensing, see https://github.com/koala-interactive/is-emoji-supported/blob/master/LICENSE.md
 */
