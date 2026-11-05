@@ -8,3 +8,13 @@ services:
     tags:
       - { name: 'pimcore_studio_ui.webpack_entry_point_provider' }
       - { name: 'pimcore_studio_ui.webpack_entry_point_provider.document_editor_iframe' }
+
+  # Surfaces license key, toolbar preset and premium gates to the Studio frontend
+  # (merged into the data-app-config attribute on the Studio shell page).
+  Chrastina\CKEditorStudioBundle\AppConfig\StudioAppConfigProvider:
+    arguments:
+      $licenseKey: '%ckeditor_studio.license_key%'
+      $toolbar: '%ckeditor_studio.toolbar%'
+      $premium: '%ckeditor_studio.premium%'
+    tags:
+      - { name: 'pimcore_studio_ui.app_config_provider' }

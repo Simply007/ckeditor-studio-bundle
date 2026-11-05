@@ -25,6 +25,17 @@ final class CKEditorStudioExtension extends Extension implements PrependExtensio
 
     public function load(array $configs, ContainerBuilder $container): void
     {
+        // Default for the env-driven license key: empty string = not configured,
+        // the editor stays on the open source feature set (licenseKey 'GPL').
+        if (!$container->hasParameter('env(CKEDITOR_LICENSE_KEY)')) {
+            $container->setParameter('env(CKEDITOR_LICENSE_KEY)', '');
+        }
+
+        $config = $this->processConfiguration(new Configuration(), $configs);
+
+        $container->setParameter('ckeditor_studio.license_key', $config['license_key'] ?? '');
+        $container->setParameter('ckeditor_studio.toolbar', $config['toolbar']);
+        $container->setParameter('ckeditor_studio.premium', $config['premium']);
     }
 
     public function prepend(ContainerBuilder $container): void
