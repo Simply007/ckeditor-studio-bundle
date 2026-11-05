@@ -26,6 +26,12 @@ services:
       $environmentId: '%ckeditor_studio.cloud_services.environment_id%'
       $accessKey: '%ckeditor_studio.cloud_services.access_key%'
 
+  # Opens Studio's connect-src CSP to Cloud Services + license usage, only when premium is active.
+  Chrastina\CKEditorStudioBundle\EventSubscriber\PremiumCspSubscriber:
+    arguments:
+      $licenseKey: '%ckeditor_studio.license_key%'
+      $premium: '%ckeditor_studio.premium%'
+
   # Token endpoint under /pimcore-studio/api (Studio firewall, ROLE_PIMCORE_USER).
   Chrastina\CKEditorStudioBundle\Controller\CloudServicesTokenController:
     tags: ['controller.service_arguments']
