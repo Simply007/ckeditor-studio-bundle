@@ -171,6 +171,73 @@ collaboration), surfaced to the frontend at runtime.
   `data-app-config`; `debug:container --env-var=CKEDITOR_LICENSE_KEY` confirms "" by
   default and the real value when the env var is set on the container.
 
+## Step 8: real premium wiring, dynamically loaded (2026-11-05)
+
+Branch `feat/configurable-ckeditor`, continued: the premium gates from step 7 are now
+real. `ckeditor5-premium-features@49.1.0` (exact version match with `ckeditor5`) is
+installed and loaded through dynamic import() only when a license key is configured
+and a gate is enabled; CKEditor AI and real-time collaboration are wired.
+
+- Guided by: the hosted CKEditor docs MCP (`search_ck_editor_knowledge_sources`),
+  which turned out to be the decisive source here, above the vendored skill. The
+  `ckeditor` skill's `references/licensing.md` correctly gives the durable premium
+  concepts (same-version rule, portal, premium CSS, "which package is it imported
+  from" heuristic) but nothing feature-specific. The MCP answered the two questions
+  that decide the implementation: the current CKEditor AI plugin set on 49.x
+  (`AIEditorIntegration` required core + `AIChat`, `AIChatShortcuts`,
+  `AIQuickActions`, `AIReviewMode`, `AITranslate`; the mandatory `ai.container` UI
+  config; Cloud Services `tokenUrl` authentication) and the RTC setup
+  (`RealTimeCollaborativeEditing`, `cloudServices.tokenUrl` + `webSocketUrl`,
+  per-document `collaboration.channelId`, `PresenceList` needing a container
+  element). Training data would have confidently wired the legacy `AIAssistant`
+  instead: the product moved under its feet in 2025/2026, exactly the trap the
+  repo's "prefer skills and live docs" rule exists for.
+- Skill gap (CKEditor side): the `ckeditor` skill has no reference for dynamic or
+  conditional premium loading. The pattern "ship one build, fetch premium chunks
+  only when the key exists" seems common for products embedding CKEditor (any
+  CMS/DAM/PIM bundle with optional premium) and needed three non-obvious moves:
+  dynamic `import('ckeditor5-premium-features')` plus dynamic CSS import so the
+  bundler splits them, a TypeScript `declare module '*.css'` shim (the exports map
+  does not type the CSS entry for dynamic import), and a static chunk-graph check
+  that no premium chunk sits on the default load path.
+- Found while verifying (module federation detail no skill covers): listing
+  `ckeditor5-premium-features` in MF `shared` (inherited from
+  `...packages.dependencies`) does NOT put it on the default path. The share
+  registration in `remoteEntry.js` holds only the name and a lazy factory; the 3 MB
+  code chunk is fetched when the factory runs, which happens on the first consume,
+  which is the dynamic import. Also observed: adding the package re-chunked the
+  shared `ckeditor5` library from one chunk into two (both still loaded together by
+  the ckeditor5 share factory), so "did my chunk list change" is not the same
+  question as "did my default fetch set change"; `mf-manifest.json` (exposes and
+  shared assets with their sync/async split) is the file that answers the real
+  question.
+- Channel id derivation (the open design point from step 7, no skill on either
+  side): the Studio SDK exports `useOptionalElementContext()` (element type + id)
+  from `modules/element`, undocumented in the 33 official skills. The field name is
+  nowhere in the typed `WysiwygProps` contract; for data object fields Studio core
+  spreads the whole field definition into the wysiwyg component, so an untyped
+  `name` prop arrives at runtime (vendor source archaeology again:
+  `dynamic-type-object-data-wysiwyg.tsx` spreads, the document editable component
+  does not). channelId = `pimcore-<elementType>-<id>-<fieldName>`; document
+  editables fall back to a warning plus the free set unless an explicit
+  `collaboration.channelId` is passed per field. A real
+  `pimcore-wysiwyg-editor-integration` skill should document which props actually
+  reach the editor slot on each surface.
+- RTC behavior consequence worth a skill note: with `RealTimeCollaborativeEditing`
+  active the document state lives in Cloud Services, so the component's external
+  `setData()` reset path must be disabled or it forks the shared state. Nothing in
+  the docs states the integration rule "no setData while RTC is on" directly.
+- Verification (no key configured, the default): `tsc --noEmit` clean; production
+  build passes; `entrypoints.json` and `mf-manifest.json` show the premium code only
+  in its own async chunk (`749`, 3 MB) and premium CSS chunk (`29`), neither
+  reachable from the default path (free-path chunk hashes for the react wrapper,
+  antd-style and the editor CSS are unchanged); `cache:clear` plus `assets:install`
+  on the running stack; `curl http://localhost/pimcore-studio/` still injects
+  `ckeditorStudio` with `licenseKey: null` and gates off, referencing only the new
+  build id. Unproven without a real trial key (Ondrej's manual step, README
+  "Testing premium locally"): license validation, the AI service round trip, and a
+  two-browser collaboration session.
+
 ## The 3 biggest skill gaps (summary)
 
 1. No skill documents the wysiwyg editor extension point (`componentConfig.wysiwyg.editor`

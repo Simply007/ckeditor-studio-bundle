@@ -138,8 +138,9 @@ To test the gating with a key: set `CKEDITOR_LICENSE_KEY` in `.env.local`,
 `cache:clear`, reload Studio, and check the editor console for license errors.
 To test a toolbar preset: set `ckeditor_studio.toolbar` in
 `config/packages/ckeditor_studio.yaml`, `cache:clear`, reload Studio. Still
-unproven at runtime: an actual commercial key, and the scaffolded premium path
-(see README and `premium.ts`).
+unproven at runtime: an actual commercial key, and therefore the premium path
+in the browser (the wiring is build-verified; see "Testing premium locally"
+in the README for the manual walkthrough with a trial key).
 
 ## Out of scope / unproven
 
