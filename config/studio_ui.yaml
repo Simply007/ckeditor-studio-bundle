@@ -13,6 +13,7 @@ services:
   # (merged into the data-app-config attribute on the Studio shell page).
   Chrastina\CKEditorStudioBundle\AppConfig\StudioAppConfigProvider:
     arguments:
+      $editor: '%ckeditor_studio.editor%'
       $licenseKey: '%ckeditor_studio.license_key%'
       $toolbar: '%ckeditor_studio.toolbar%'
       $premium: '%ckeditor_studio.premium%'
