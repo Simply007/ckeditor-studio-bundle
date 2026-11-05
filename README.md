@@ -182,8 +182,11 @@ ckeditor_studio:
   premium:
     ai:
       enabled: '%env(bool:CKEDITOR_PREMIUM_AI)%'
-      # Optional raw CKEditor "ai" configuration, merged over the default UI
-      # placement { container: { type: 'overlay' } } (serviceUrl, chat, ...).
+      # Where the AI UI renders: sidebar (default, one docked panel per element
+      # next to the content) or overlay (floats over the page).
+      # container: sidebar
+      # Optional raw CKEditor "ai" configuration, passed to the shared Context
+      # (serviceUrl, chat, ...).
       # config: {}
     realtime_collaboration:
       enabled: '%env(bool:CKEDITOR_PREMIUM_RTC)%'
@@ -207,12 +210,10 @@ default; set them in `.env.local` or your secret store, never in committed files
 
 What turning each gate on does (with a license key configured):
 
-- `premium.ai.enabled` loads the CKEditor AI plugin set (`AIEditorIntegration`,
-  `AIChat`, `AIChatShortcuts`, `AIQuickActions`, `AIReviewMode`, `AITranslate`),
-  passes `premium.ai.config` through as the CKEditor `ai` option (default
-  `container: { type: 'overlay' }`, which Studio shows as a docked side panel), and
-  appends the `toggleAi` and `aiQuickActions` buttons to the toolbar (they cannot sit
-  in the yaml toolbar, because the free path has no plugin behind them). The AI
+- `premium.ai.enabled` turns on CKEditor AI with ONE chat per Pimcore element that
+  sees every wysiwyg field of that element (see "One AI chat per element" below),
+  and appends the `toggleAi` and `aiQuickActions` buttons to the toolbar (they cannot
+  sit in the yaml toolbar, because the free path has no plugin behind them). The AI
   service authenticates with the Cloud Services token, so it needs the token endpoint
   even when the collaboration gate is off.
 - `premium.realtime_collaboration.enabled` loads `RealTimeCollaborativeEditing`
@@ -225,14 +226,43 @@ What turning each gate on does (with a license key configured):
   Pimcore form (the object shows as modified and saves normally).
 
 Collaboration channel id: derived per field as
-`pimcore-<elementType>-<elementId>-<fieldName>` from the open Studio element and the
-field identity Studio passes to the wysiwyg slot (`combinedFieldName`, so nested
-fields such as localized fields stay unique), for example
-`pimcore-data-object-3-content`. An explicit per-field `editorConfig.collaboration.channelId`
-always wins. Document editables receive no field name from Studio core: they skip
-collaboration with a console warning, and for CKEditor AI (which refuses to start
-without a channel id) they get a per-mount random id, so AI works there but chat
-history does not survive a reload.
+`pimcore-<elementType>-<elementId>-<fieldName>`, for example
+`pimcore-data-object-3-content` or `pimcore-document-1-intro`. Data object fields take
+the element from Studio's element context and the field from `combinedFieldName`
+(nested fields such as localized fields stay unique). Document editables render in
+the editmode iframe, where Studio passes neither: the element id comes from the
+iframe page (`window.pimcore_document_id`) and the field from the editable's
+`#pimcore_editable_<name>` container. An explicit per-field
+`editorConfig.collaboration.channelId` always wins.
+
+### One AI chat per element (shared Context)
+
+With the AI gate on, all editors of one Pimcore element share one CKEditor
+`Context` (CKEditor's multi-editor AI support, stable since v48.3):
+
+- The Context (key and channel `pimcore-<elementType>-<elementId>`) carries the AI
+  feature plugins (`AIChat`, `AIChatHistory`, `AIChatShortcuts`, `AIReviewMode`,
+  `AITranslate`), `CloudServices`, the `ai` configuration (including
+  `premium.ai.config`) and, with the RTC gate on too, one shared `PresenceList`.
+- Each editor keeps `AIEditorIntegration` + `AIQuickActions` (+ RTC) and describes
+  itself through `root.title` / `root.description` (field title, or the humanized
+  editable name such as "Found resources"), which is how the AI tells fields apart
+  and puts an edit in the right one.
+- The Context is created by the first editor of the element, reference counted, and
+  destroyed shortly after the last one unmounts (element tab closed). The free path
+  and the AI-off path create no Context.
+
+AI panel (`premium.ai.container`): `sidebar` (default) renders the chat into one
+panel per element, docked on the right of the scroll container that holds the
+element's editors (the editmode iframe for documents, Studio's edit panel for data
+objects); that container gets matching right padding, so the content moves aside
+instead of being covered. The panel is 32% of the available width, clamped to 300
+to 440px, hides with the AI toggle button, follows Studio's tab switching, and the
+editor's fullscreen mode takes the chat along and hands it back on exit. `overlay`
+restores CKEditor's floating panel. Studio has a sidebar extension point for
+documents only (`Document/Editor/Sidebar/*SidebarManager`) and none for data
+objects, and document editables live in an iframe while that sidebar lives in the
+parent window, so the bundle docks its own panel instead.
 
 ### Cloud Services token endpoint
 
@@ -290,13 +320,16 @@ What to expect (verified live on 2026-11-05 with a long-term trial, Chrome):
 - The console shows CKEditor's trial license notice and no license error.
 - The premium chunks load only now; the token endpoint returns `200` for the logged-in
   user.
-- The AI panel opens in the Studio side panel; the toolbar carries the AI and AI
-  Quick Actions buttons. A chat message such as "Summarize this document in one
+- The AI panel is docked next to the content (not over it); the toolbar carries the
+  AI and AI Quick Actions buttons. A chat message such as "Summarize this document in one
   sentence." returns an answer about the current document.
 - The presence list above the toolbar shows the current user (the Pimcore user from
   the token's `sub`), the channel id is `pimcore-data-object-3-content`, and an edit
   made in a second tab on the same object appears live in the first one. Two tabs of
   the SAME Pimcore user show one avatar; log in as a second Pimcore user to see two.
+- On a document with several editables (the Home page has five), the chat lists all
+  of them by title and an edit request that names one field ("add a sentence to the
+  Intro that mentions the Reference points") lands in that field only.
 - Set both gates back to `0` (or remove the key) and `cache:clear`: no premium chunk
   loads and Studio's CSP is back to its original `connect-src`.
 
@@ -322,9 +355,11 @@ Backend prerequisites beyond the key, with pointers:
   `config/bundles.php`). Tracked as
   [issue #2](https://github.com/Simply007/pcdd26-pimcore-ai-guidepost/issues/2)
   (configurable editor selection).
-- Document editables derive no collaboration channel id by default (Studio core does
-  not pass the editable name); real-time collaboration there needs an explicit
-  per-field `collaboration.channelId`, and AI chat history there lasts one mount.
+- Document editables are identified from the editmode iframe DOM
+  (`#pimcore_editable_<name>`, `window.pimcore_document_id`) because Studio core passes
+  neither; a Pimcore change to that markup would need a matching change here.
+- The docked AI panel was verified on a wide screen; the laptop-width layout (panel
+  clamped to 300 to 440px) follows from the sizing rule but was not checked live.
 - The token endpoint grants every Studio user writer access to every channel and the
   AI end-user profile. Fine for a demo; production should map Pimcore permissions to
   per-channel roles.

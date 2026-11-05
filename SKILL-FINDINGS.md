@@ -304,6 +304,71 @@ tested in Chrome on `/blog/hello-ckeditor`.
   public by design), but anyone pasting console logs into an issue or an agent chat
   should know it.
 
+## Step 10: editor height and Fullscreen (2026-11-05)
+
+- Long data object content grew the wrapper to the full content height (1162px for
+  object 5): no internal scroll, toolbar scrolled away, bottom border flush on
+  Studio's scroll container. Fix was plain CSS (70vh cap when the field has no
+  height, `min-height: 0` on `.ck-editor` and `.ck-editor__main`, bottom margin).
+  No skill needed; the one thing to verify was that the React wrapper puts
+  `.ck-editor` directly under our wrapper (it does, so the flex chain holds).
+- `Fullscreen` is free (in `ckeditor5`) and worked inside Studio unchanged: it covers
+  the whole Studio window, carries the AI panel and the connected users list along,
+  and restores the editor, toolbar and presence list on exit. I had pre-written a
+  README note claiming the AI panel would be lost in fullscreen; the live test
+  proved it wrong. Lesson kept for the talk: write the note after the test.
+
+## Step 11: one AI chat per element (shared Context) and a docked AI panel (2026-11-05)
+
+- Guided by: the CKEditor docs MCP ("AI in multi-root and multi-editor setups",
+  `AIContainerSidebar`). It gave the exact split (AI feature plugins and
+  `ai.container` on the `Context`, `AIEditorIntegration` + `AIQuickActions` per
+  editor, the Context's own `collaboration.channelId`, `root.title` /
+  `root.description` per editor) and the warning that a positioned sidebar host
+  needs `ai.overlayContainer`. The `ckeditor` skill has no multi-editor or AI
+  container reference at all; this is a gap for any CMS integration, where "several
+  rich text fields on one entity" is the normal case, not the exception.
+- Which props tell an editor its element and field (no skill on either side, all
+  found by inspecting the live React fiber and the iframe DOM):
+  - Data objects: element id and type from `useOptionalElementContext()`
+    (`modules/element`), field from the untyped `combinedFieldName` prop (the
+    `name` prop is a form path array), title from the untyped `title` prop.
+  - Documents: editables render in the editmode iframe, where
+    `useOptionalElementContext()` returns null and no name or title prop is passed
+    (the editable component forwards only value, config and sizing props). The
+    element id is a page global (`window.pimcore_document_id`, also the
+    `documentId` query parameter), the field is the `#pimcore_editable_<name>`
+    container (`data-name`, `data-real-name`, block suffixes in the id). Neither is
+    an SDK contract; both are markup conventions.
+- Real-time collaboration interaction no doc spells out: `root.title` is stored on
+  the root and synced through RTC, so a collaboration channel created before titles
+  were configured keeps its stored, title-less root and the config value is ignored
+  (object 5 had no title until fixed; the brand-new document channels had theirs).
+  Fix: re-apply the configured title and description to the root after ready.
+- Studio extension points for a side panel: documents have a sidebar manager
+  (`Document/Editor/Sidebar/PageSidebarManager` and friends, `registerEntry`), data
+  objects have none, and the document sidebar lives in the parent window while
+  document editables (and CKEditor's CSS) live in the editmode iframe. So the
+  bundle docks its own panel next to the content. Two Studio behaviors shaped it,
+  both found live, not in a skill: inactive element tabs are hidden with
+  `visibility: hidden` (layout and size unchanged, so no resize signal; the panel
+  is therefore mounted inside the tab's scroll container and inherits it), and an
+  ancestor in Studio's tree is the containing block of `position: fixed` elements
+  (the first attempt rendered off screen; the panel now measures and corrects its
+  offset).
+- Verified live: Home document, five editables, one shared Context (all five
+  editors in `context.editors`, channel `pimcore-document-1`, AI plugins and
+  PresenceList on it), per-editor channels `pimcore-document-1-<editable>`, titles
+  "Intro", "Found resources", ... on the roots; the chat listed all five by title,
+  and "add a sentence to the end of the Intro that points to the ecosystems in
+  Reference points" produced a change that landed only in Intro (undone afterwards).
+  Object 5: chat docked next to the field without overlap, separate Context
+  (`pimcore-data-object-5`), RTC still on, editor height cap intact, panel hidden
+  while another Studio tab is active, fullscreen takes the chat along and returns
+  it, closing the tab destroyed its Context and panel. Not verified live: laptop
+  widths (the window resize call did not change the viewport) and the `overlay`
+  option.
+
 ## The 3 biggest skill gaps (summary)
 
 1. No skill documents the wysiwyg editor extension point (`componentConfig.wysiwyg.editor`
