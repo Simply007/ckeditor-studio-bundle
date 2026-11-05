@@ -125,6 +125,7 @@ ckeditor_studio:
     - insertTable
     - '|'
     - sourceEditing
+    - fullscreen
 ```
 
 Change it by overriding the whole list; `'|'` is a separator. A minimal preset:
@@ -136,7 +137,15 @@ ckeditor_studio:
 
 Items must be backed by a plugin the frontend build ships (currently: Essentials,
 Paragraph, Heading, Bold, Italic, Underline, Alignment, Link, List, Indent,
-BlockQuote, Table, Image, ImageResize, SourceEditing, GeneralHtmlSupport). Unknown
+BlockQuote, Table, Image, ImageResize, SourceEditing, GeneralHtmlSupport, Fullscreen).
+`fullscreen` (free, part of the open source package) expands the editor over the
+whole Studio window in a page-style layout and returns cleanly. With the premium
+gates on, fullscreen carries the CKEditor AI panel and the connected users list
+along, so AI keeps working there (verified live in Studio).
+
+Data object fields without a configured `height` are capped at 70% of the viewport,
+so long content scrolls inside the editor and the toolbar stays visible; a `height`
+on the field definition wins. Document editables keep their natural height. Unknown
 items are skipped by CKEditor with a console warning, nothing breaks. Adding an item
 that needs a new plugin means adding the plugin in
 `assets/studio/js/src/modules/ckeditor-editor/editor.tsx` and rebuilding. The AI

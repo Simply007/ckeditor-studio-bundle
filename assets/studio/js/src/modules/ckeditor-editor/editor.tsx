@@ -6,6 +6,7 @@ import {
   Bold,
   ClassicEditor,
   Essentials,
+  Fullscreen,
   GeneralHtmlSupport,
   Heading,
   Image,
@@ -162,6 +163,7 @@ const Editor = forwardRef<WysiwygEditorRef, EditorProps>(
           ImageResize,
           SourceEditing,
           GeneralHtmlSupport,
+          Fullscreen,
           ...premium.plugins
         ],
         toolbar: premium.toolbarItems.length === 0

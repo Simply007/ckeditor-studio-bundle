@@ -55,7 +55,7 @@ export const DEFAULT_TOOLBAR: string[] = [
   'alignment', '|',
   'bulletedList', 'numberedList', 'outdent', 'indent', '|',
   'blockQuote', 'link', 'insertTable', '|',
-  'sourceEditing'
+  'sourceEditing', 'fullscreen'
 ]
 
 const DEFAULT_PREMIUM: CKEditorStudioPremiumSettings = {

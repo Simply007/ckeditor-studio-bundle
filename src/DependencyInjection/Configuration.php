@@ -46,7 +46,7 @@ final class Configuration implements ConfigurationInterface
         'alignment', '|',
         'bulletedList', 'numberedList', 'outdent', 'indent', '|',
         'blockQuote', 'link', 'insertTable', '|',
-        'sourceEditing',
+        'sourceEditing', 'fullscreen',
     ];
 
     public function getConfigTreeBuilder(): TreeBuilder
