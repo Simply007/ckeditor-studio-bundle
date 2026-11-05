@@ -10,7 +10,10 @@ declare(strict_types=1);
 
 namespace Chrastina\CKEditorStudioBundle\AppConfig;
 
+use Chrastina\CKEditorStudioBundle\CloudServices\CloudServicesTokenGenerator;
+use Chrastina\CKEditorStudioBundle\Controller\CloudServicesTokenController;
 use Pimcore\Bundle\StudioUiBundle\AppConfig\AppConfigProviderInterface;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
  * Surfaces the bundle configuration (license key, toolbar preset, premium gates)
@@ -35,6 +38,9 @@ final class StudioAppConfigProvider implements AppConfigProviderInterface
         private readonly string $licenseKey,
         private readonly array $toolbar,
         private readonly array $premium,
+        private readonly string $cloudServicesWebSocketUrl,
+        private readonly CloudServicesTokenGenerator $tokenGenerator,
+        private readonly UrlGeneratorInterface $urlGenerator,
     ) {
     }
 
@@ -42,6 +48,24 @@ final class StudioAppConfigProvider implements AppConfigProviderInterface
     {
         $rtc = $this->premium['realtime_collaboration'] ?? [];
         $ai = $this->premium['ai'] ?? [];
+
+        // Explicit yaml values win; otherwise fall back to the bundle's own token
+        // endpoint (when the Cloud Services environment is configured) and the
+        // env-driven WebSocket URL. Resolved per request, so env changes need only
+        // a cache:clear. Only the URLs reach the browser, never the access key.
+        $tokenUrl = $rtc['token_url'] ?? null;
+        if (($tokenUrl === null || $tokenUrl === '') && $this->tokenGenerator->isConfigured()) {
+            $tokenUrl = $this->urlGenerator->generate(
+                CloudServicesTokenController::ROUTE_NAME,
+                [],
+                UrlGeneratorInterface::ABSOLUTE_URL
+            );
+        }
+
+        $webSocketUrl = $rtc['web_socket_url'] ?? null;
+        if (($webSocketUrl === null || $webSocketUrl === '') && $this->cloudServicesWebSocketUrl !== '') {
+            $webSocketUrl = $this->cloudServicesWebSocketUrl;
+        }
 
         return [
             'ckeditorStudio' => [
@@ -55,8 +79,8 @@ final class StudioAppConfigProvider implements AppConfigProviderInterface
                     ],
                     'realtimeCollaboration' => [
                         'enabled' => (bool) ($rtc['enabled'] ?? false),
-                        'tokenUrl' => $rtc['token_url'] ?? null,
-                        'webSocketUrl' => $rtc['web_socket_url'] ?? null,
+                        'tokenUrl' => $tokenUrl === '' ? null : $tokenUrl,
+                        'webSocketUrl' => $webSocketUrl === '' ? null : $webSocketUrl,
                     ],
                 ],
             ],

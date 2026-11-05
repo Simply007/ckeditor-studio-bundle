@@ -27,8 +27,12 @@ final class CKEditorStudioExtension extends Extension implements PrependExtensio
     {
         // Default for the env-driven license key: empty string = not configured,
         // the editor stays on the open source feature set (licenseKey 'GPL').
-        if (!$container->hasParameter('env(CKEDITOR_LICENSE_KEY)')) {
-            $container->setParameter('env(CKEDITOR_LICENSE_KEY)', '');
+        // Same pattern for the Cloud Services environment behind the token endpoint:
+        // empty = endpoint disabled (503), token_url stays unset.
+        foreach (['CKEDITOR_LICENSE_KEY', 'CKEDITOR_CS_ENVIRONMENT_ID', 'CKEDITOR_CS_ACCESS_KEY', 'CKEDITOR_CS_WEBSOCKET_URL'] as $envVar) {
+            if (!$container->hasParameter('env(' . $envVar . ')')) {
+                $container->setParameter('env(' . $envVar . ')', '');
+            }
         }
 
         $config = $this->processConfiguration(new Configuration(), $configs);
@@ -36,6 +40,9 @@ final class CKEditorStudioExtension extends Extension implements PrependExtensio
         $container->setParameter('ckeditor_studio.license_key', $config['license_key'] ?? '');
         $container->setParameter('ckeditor_studio.toolbar', $config['toolbar']);
         $container->setParameter('ckeditor_studio.premium', $config['premium']);
+        $container->setParameter('ckeditor_studio.cloud_services.environment_id', $config['cloud_services']['environment_id'] ?? '');
+        $container->setParameter('ckeditor_studio.cloud_services.access_key', $config['cloud_services']['access_key'] ?? '');
+        $container->setParameter('ckeditor_studio.cloud_services.web_socket_url', $config['cloud_services']['web_socket_url'] ?? '');
     }
 
     public function prepend(ContainerBuilder $container): void

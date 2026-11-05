@@ -23,8 +23,12 @@ use Symfony\Component\Config\Definition\ConfigurationInterface;
  *       config: {}                               # raw CKEditor "ai" config (adapter etc.), passed through
  *     realtime_collaboration:
  *       enabled: false
- *       token_url: null                          # required when enabled
- *       web_socket_url: null                     # required when enabled
+ *       token_url: null                          # null = bundle token endpoint when cloud_services is set
+ *       web_socket_url: null                     # null = cloud_services.web_socket_url
+ *   cloud_services:
+ *     environment_id: '%env(CKEDITOR_CS_ENVIRONMENT_ID)%'   # token aud
+ *     access_key: '%env(CKEDITOR_CS_ACCESS_KEY)%'           # signs tokens, server side only
+ *     web_socket_url: '%env(CKEDITOR_CS_WEBSOCKET_URL)%'
  */
 final class Configuration implements ConfigurationInterface
 {
@@ -92,19 +96,39 @@ final class Configuration implements ConfigurationInterface
                                     ->defaultFalse()
                                 ->end()
                                 ->scalarNode('token_url')
-                                    ->info('CKEditor Cloud Services token endpoint (cloudServices.tokenUrl).')
+                                    ->info(
+                                        'CKEditor Cloud Services token endpoint (cloudServices.tokenUrl). Null: the bundle\'s own '
+                                        . 'endpoint (/pimcore-studio/api/ckeditor-studio/cs-token) when cloud_services is configured. '
+                                        . 'Also authenticates CKEditor AI.'
+                                    )
                                     ->defaultNull()
                                 ->end()
                                 ->scalarNode('web_socket_url')
-                                    ->info('CKEditor Cloud Services WebSocket URL (cloudServices.webSocketUrl).')
+                                    ->info('CKEditor Cloud Services WebSocket URL (cloudServices.webSocketUrl). Null: cloud_services.web_socket_url.')
                                     ->defaultNull()
                                 ->end()
                             ->end()
-                            ->validate()
-                                ->ifTrue(static fn (array $rtc): bool => $rtc['enabled'] === true
-                                    && ($rtc['token_url'] === null || $rtc['web_socket_url'] === null))
-                                ->thenInvalid('ckeditor_studio.premium.realtime_collaboration needs token_url and web_socket_url when enabled.')
-                            ->end()
+                        ->end()
+                    ->end()
+                ->end()
+                ->arrayNode('cloud_services')
+                    ->info(
+                        'CKEditor Cloud Services environment for the bundle\'s token endpoint. All values default to environment '
+                        . 'variables; leave them empty to disable the endpoint. The access key never leaves the server.'
+                    )
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->scalarNode('environment_id')
+                            ->info('Environment id (token "aud" claim).')
+                            ->defaultValue('%env(CKEDITOR_CS_ENVIRONMENT_ID)%')
+                        ->end()
+                        ->scalarNode('access_key')
+                            ->info('Environment access key, signs the HS256 tokens. Secret: keep it in .env.local or a vault.')
+                            ->defaultValue('%env(CKEDITOR_CS_ACCESS_KEY)%')
+                        ->end()
+                        ->scalarNode('web_socket_url')
+                            ->info('Environment WebSocket URL, used when premium.realtime_collaboration.web_socket_url is null.')
+                            ->defaultValue('%env(CKEDITOR_CS_WEBSOCKET_URL)%')
                         ->end()
                     ->end()
                 ->end()

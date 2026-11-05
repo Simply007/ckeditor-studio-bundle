@@ -16,5 +16,16 @@ services:
       $licenseKey: '%ckeditor_studio.license_key%'
       $toolbar: '%ckeditor_studio.toolbar%'
       $premium: '%ckeditor_studio.premium%'
+      $cloudServicesWebSocketUrl: '%ckeditor_studio.cloud_services.web_socket_url%'
     tags:
       - { name: 'pimcore_studio_ui.app_config_provider' }
+
+  # Signs CKEditor Cloud Services tokens (RTC + AI). The access key stays server side.
+  Chrastina\CKEditorStudioBundle\CloudServices\CloudServicesTokenGenerator:
+    arguments:
+      $environmentId: '%ckeditor_studio.cloud_services.environment_id%'
+      $accessKey: '%ckeditor_studio.cloud_services.access_key%'
+
+  # Token endpoint under /pimcore-studio/api (Studio firewall, ROLE_PIMCORE_USER).
+  Chrastina\CKEditorStudioBundle\Controller\CloudServicesTokenController:
+    tags: ['controller.service_arguments']
