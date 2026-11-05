@@ -115,9 +115,11 @@ export const CKEditorEditor = forwardRef<WysiwygEditorRef, WysiwygProps>(({
   // Data object fields without a configured height would grow with the content
   // (no internal scrolling, toolbar scrolls away), so they are fitted to Studio's
   // panel; a height set on the field definition always wins. Document editables
-  // keep their natural height (they sit in the page layout).
+  // always grow with their content and ignore a template height: a capped field
+  // inside the editmode iframe catches the mouse wheel and stops the page from
+  // scrolling while the pointer is over its text.
   const [wrapperRef, fittedMaxHeight] = useFitToPanel(!isDocument && configuredHeight === undefined)
-  const maxHeight = configuredHeight ?? fittedMaxHeight
+  const maxHeight = isDocument ? undefined : configuredHeight ?? fittedMaxHeight
 
   return (
     <div

@@ -171,9 +171,10 @@ along, so AI keeps working there (verified live in Studio).
 
 Data object fields without a configured `height` are fitted to Studio's panel (at most
 70% of the viewport), so long content scrolls inside the editor and the toolbar stays
-visible; a `height` on the field definition wins. Document editables keep their natural
-height unless the template sets one (`pimcore_wysiwyg('intro', { height: 300 })`), in
-which case the text scrolls inside the editing area. Unknown
+visible; a `height` on the field definition wins. Document editables always grow with their
+content, and a template `height` (`pimcore_wysiwyg('intro', { height: 300 })`) is
+ignored: a capped field inside the editmode iframe would catch the mouse wheel and stop
+the page from scrolling while the pointer is over its text. Unknown
 items are skipped by CKEditor with a console warning, nothing breaks. Adding an item
 that needs a new plugin means adding the plugin in
 `assets/studio/js/src/modules/ckeditor-editor/editor.tsx` and rebuilding. The AI
