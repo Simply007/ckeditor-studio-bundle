@@ -21,7 +21,7 @@
     },
     "globalName": "ckeditor_studio_bundle",
     "pluginVersion": "2.9.3",
-    "publicPath": "/bundles/ckeditorstudio/studio/build/ada1087cfab7/"
+    "publicPath": "/bundles/ckeditorstudio/studio/build/4671740375e6/"
   },
   "shared": [
     {
@@ -273,7 +273,7 @@
       "assets": {
         "js": {
           "sync": [
-            "static/js/async/__federation_expose_default_export.ffb3f2ae.js"
+            "static/js/async/__federation_expose_default_export.3ba2c40e.js"
           ],
           "async": [
             "static/js/async/158.a02b37cf.js",
