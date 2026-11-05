@@ -130,6 +130,47 @@ was reading quill-bundle source or vendor code. Dated 2026-11-05.
   `ClassDefinition` builder API or the Listing/controller/Twig loop. The in-repo
   `pimcore-onboarding` skill is the natural home.
 
+## Step 7: configurable license key, toolbar and premium gates (2026-11-05)
+
+Branch `feat/configurable-ckeditor`: license-key gating (env CKEDITOR_LICENSE_KEY),
+yaml toolbar presets and scaffolded premium gates (CKEditor AI, real-time
+collaboration), surfaced to the frontend at runtime.
+
+- Guided by: the `ckeditor` skill's `references/licensing.md`. Accurate and
+  sufficient for the CKEditor side: GPL vs commercial key semantics, the portal,
+  `ckeditor5-premium-features` at the exact same version as `ckeditor5`, Cloud
+  Services credentials for collaboration, "is a feature premium" heuristic. No
+  fallback needed there.
+- Guided by: NO Pimcore skill. The mechanism this whole task runs on, bundle config
+  reaching the Studio frontend at runtime, is `AppConfigProviderInterface` + the
+  `pimcore_studio_ui.app_config_provider` tag (merged into the `data-app-config`
+  attribute on the Studio shell page, read back via the `appConfig` export of
+  `@pimcore/studio-ui-bundle/app`). None of the 33 official skills mentions it; the
+  interface's own docblock in vendor source is the only documentation, and the
+  frontend-side `appConfig` export was found by reading `sdk/app/index.ts`
+  re-exports. This is the natural companion fact to the `componentConfig` override
+  from step 2 and belongs in the same missing skill.
+- Decision: runtime injection via the app config provider instead of build-time env
+  substitution (rsbuild define). Build-time would bake license keys into the
+  committed build output and require a rebuild per config change; runtime needs only
+  `cache:clear`. The env default pattern (`$container->setParameter('env(CKEDITOR_LICENSE_KEY)', '')`)
+  is standard Symfony, not skill-covered, but training data sufficed.
+- Decision: the premium path stays scaffolded and `ckeditor5-premium-features` is NOT
+  installed, so the committed build remains a clean open source (GPL) build. Enabled
+  flags without wiring log a console warning and keep the free feature set instead of
+  breaking the editor.
+- Found while wiring the toolbar: Studio core already merges
+  `appConfig.wysiwyg.defaultEditorConfig.dataObject|document` into the `editorConfig`
+  prop (dynamic-type wysiwyg definitions), so there are two legitimate config layers;
+  README now documents the precedence (bundle defaults < ckeditor_studio.toolbar <
+  editorConfig pass-through). No skill on either side mentions this collision.
+- Verification (full loop, stack booted): `tsc --noEmit` and the production build
+  pass; `cache:clear` compiles the new Configuration + tagged service;
+  `assets:install` publishes the new build id; `curl` of the Studio shell page shows
+  the `ckeditorStudio` key with `licenseKey: null` and the default toolbar in
+  `data-app-config`; `debug:container --env-var=CKEDITOR_LICENSE_KEY` confirms "" by
+  default and the real value when the env var is set on the container.
+
 ## The 3 biggest skill gaps (summary)
 
 1. No skill documents the wysiwyg editor extension point (`componentConfig.wysiwyg.editor`
