@@ -5,6 +5,9 @@ import { type DragAndDropInfo } from '@pimcore/studio-ui-bundle/components'
 import { useStyles } from './ckeditor-editor.styles'
 import Editor from './editor'
 
+/** Default height cap for data object fields that configure no height. */
+const DATA_OBJECT_DEFAULT_MAX_HEIGHT = '70vh'
+
 export const CKEditorEditor = forwardRef<WysiwygEditorRef, WysiwygProps>(({
   value,
   onChange,
@@ -40,10 +43,17 @@ export const CKEditorEditor = forwardRef<WysiwygEditorRef, WysiwygProps>(({
     }
   }
 
+  const isDocument = context === WysiwygContext.DOCUMENT
+  // Data object fields without a configured height would grow with the content
+  // (no internal scrolling, toolbar scrolls away). Cap them at a viewport share;
+  // a height set on the field definition always wins. Document editables keep
+  // their natural height (they sit in the page layout).
+  const maxHeight = toCssDimension(height) ?? (isDocument ? undefined : DATA_OBJECT_DEFAULT_MAX_HEIGHT)
+
   return (
     <div
-      className={ ['ckeditor-editor', context === WysiwygContext.DOCUMENT ? styles['editor-document'] : styles.editor].join(' ') }
-      style={ { maxWidth: toCssDimension(width), maxHeight: toCssDimension(height) } }
+      className={ ['ckeditor-editor', isDocument ? styles['editor-document'] : styles.editor].join(' ') }
+      style={ { maxWidth: toCssDimension(width), maxHeight } }
     >
       <Editor
         defaultValue={ value ?? '' }

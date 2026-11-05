@@ -12,16 +12,32 @@ export const useStyles = createStyles(({ css, token }) => {
       display: flex;
       overflow: hidden;
       flex-direction: column;
+      /* Keeps the bottom border off the edge of Studio's scroll container. */
+      margin-bottom: ${token.marginXS}px;
 
+      /* Presence list (premium RTC) keeps its height when the editor is capped. */
+      > .ckeditor-presence-list {
+        flex-shrink: 0;
+      }
+
+      /* min-height: 0 lets the flex chain shrink below the content height, so a
+         capped wrapper (max-height) scrolls inside the editable while the
+         toolbar stays visible. */
       .ck.ck-editor {
         width: 100%;
         display: flex;
         flex-direction: column;
-        flex-grow: 1;
+        flex: 1 1 auto;
+        min-height: 0;
+      }
+
+      .ck.ck-editor__top {
+        flex-shrink: 0;
       }
 
       .ck.ck-editor__main {
-        flex-grow: 1;
+        flex: 1 1 auto;
+        min-height: 0;
         overflow: auto;
       }
 
