@@ -21,13 +21,16 @@ export interface PremiumExtensions {
   config: Partial<EditorConfig>
   /** True when real-time collaboration is active for this editor instance. */
   realtimeCollaborationActive: boolean
+  /** Toolbar items the active premium features add (appended unless already present). */
+  toolbarItems: string[]
 }
 
 /** The no-premium result: shared by the GPL path and every fallback. */
 export const EMPTY_PREMIUM_EXTENSIONS: PremiumExtensions = Object.freeze({
   plugins: [],
   config: {},
-  realtimeCollaborationActive: false
+  realtimeCollaborationActive: false,
+  toolbarItems: []
 })
 
 const TAG = '[ckeditor-studio-bundle]'
@@ -88,7 +91,8 @@ export const loadPremiumExtensions = async (
   const extensions: PremiumExtensions = {
     plugins: [],
     config: {},
-    realtimeCollaborationActive: false
+    realtimeCollaborationActive: false,
+    toolbarItems: []
   }
 
   // CKEditor Cloud Services connection, shared by real-time collaboration and
@@ -125,6 +129,11 @@ export const loadPremiumExtensions = async (
       ...ai.config
     } as EditorConfig['ai']
 
+    // The AI buttons only exist with the AI plugins loaded, so they are added
+    // here instead of in the yaml toolbar (which would warn on the free path).
+    // 'toggleAi' opens the AI panel (chat), 'aiQuickActions' the quick actions.
+    extensions.toolbarItems.push('toggleAi', 'aiQuickActions')
+
     if (cloudServices.tokenUrl === undefined) {
       console.warn(
         `${TAG} ckeditor_studio.premium.ai is enabled without a Cloud Services token endpoint ` +
@@ -152,6 +161,12 @@ export const loadPremiumExtensions = async (
       extensions.plugins.push(premium.RealTimeCollaborativeEditing)
       extensions.realtimeCollaborationActive = true
 
+      // SourceEditing (part of the free plugin set) refuses to initialize next
+      // to RealTimeCollaborativeEditing (error
+      // source-editing-incompatible-with-real-time-collaboration) unless this
+      // flag acknowledges that source mode edits overwrite concurrent changes.
+      extensions.config.sourceEditing = { allowCollaborationFeatures: true }
+
       // Presence list (who is editing this field) when the editor component
       // rendered a container for it. Remote selections and carets are part of
       // RealTimeCollaborativeEditing itself.
@@ -162,11 +177,21 @@ export const loadPremiumExtensions = async (
     }
   }
 
-  // Channel id also scopes CKEditor AI chat history and context, so set it
-  // whenever it is known and any premium feature is active.
+  // Channel id also scopes CKEditor AI chat history and context, and CKEditor
+  // AI refuses to initialize without one (error ai-missing-channel-id, which
+  // fails the whole editor mount). So: the derived id whenever it is known;
+  // for AI without a derivable id (document editables) a per-mount random id,
+  // which keeps AI working at the cost of chat history across reloads.
   if (options.channelId !== null && (ai.enabled || extensions.realtimeCollaborationActive)) {
     extensions.config.collaboration = { channelId: options.channelId }
+  } else if (ai.enabled) {
+    extensions.config.collaboration = { channelId: `pimcore-ai-${randomId()}` }
   }
 
   return extensions
 }
+
+const randomId = (): string =>
+  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2) + Date.now().toString(36)

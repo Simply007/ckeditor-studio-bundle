@@ -164,7 +164,13 @@ const Editor = forwardRef<WysiwygEditorRef, EditorProps>(
           GeneralHtmlSupport,
           ...premium.plugins
         ],
-        toolbar: settings.toolbar,
+        toolbar: premium.toolbarItems.length === 0
+          ? settings.toolbar
+          : [
+              ...settings.toolbar,
+              '|',
+              ...premium.toolbarItems.filter((item) => !settings.toolbar.includes(item))
+            ],
         table: {
           contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells']
         },
