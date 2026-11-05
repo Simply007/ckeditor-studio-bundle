@@ -3,7 +3,7 @@ import { type WysiwygEditorRef, type WysiwygProps, WysiwygContext } from '@pimco
 import { toCssDimension } from '@pimcore/studio-ui-bundle/utils'
 import { type DragAndDropInfo } from '@pimcore/studio-ui-bundle/components'
 import { useStyles } from './ckeditor-editor.styles'
-import Editor from './editor'
+import Editor, { type EditorType } from './editor'
 
 /** Upper bound for data object fields that configure no height, as a viewport share. */
 const DATA_OBJECT_MAX_VIEWPORT_SHARE = 0.7
@@ -105,6 +105,12 @@ export const CKEditorEditor = forwardRef<WysiwygEditorRef, WysiwygProps>(({
   }
 
   const isDocument = context === WysiwygContext.DOCUMENT
+  // Document editables can opt into the inline editor from Twig:
+  // pimcore_wysiwyg('name', { editorType: 'inline' }). Studio merges the
+  // editable options into editorConfig, so the key is taken out here and never
+  // reaches CKEditor.
+  const { editorType: requestedType, ...ckeditorConfig } = editorConfig ?? {}
+  const editorType: EditorType = isDocument && requestedType === 'inline' ? 'inline' : 'classic'
   const configuredHeight = toCssDimension(height)
   // Data object fields without a configured height would grow with the content
   // (no internal scrolling, toolbar scrolls away), so they are fitted to Studio's
@@ -115,13 +121,14 @@ export const CKEditorEditor = forwardRef<WysiwygEditorRef, WysiwygProps>(({
 
   return (
     <div
-      className={ ['ckeditor-editor', isDocument ? styles['editor-document'] : styles.editor].join(' ') }
+      className={ ['ckeditor-editor', editorType === 'inline' ? styles['editor-inline'] : isDocument ? styles['editor-document'] : styles.editor].join(' ') }
       ref={ wrapperRef }
       style={ { maxWidth: toCssDimension(width), maxHeight } }
     >
       <Editor
         defaultValue={ value ?? '' }
-        editorConfig={ editorConfig }
+        editorConfig={ ckeditorConfig }
+        editorType={ editorType }
         fieldName={ fieldName }
         fieldTitle={ typeof (untypedProps as Record<string, unknown>).title === 'string' ? (untypedProps as Record<string, string>).title : undefined }
         maxCharacters={ maxCharacters }

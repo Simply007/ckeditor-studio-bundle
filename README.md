@@ -169,9 +169,11 @@ whole Studio window in a page-style layout and returns cleanly. With the premium
 gates on, fullscreen carries the CKEditor AI panel and the connected users list
 along, so AI keeps working there (verified live in Studio).
 
-Data object fields without a configured `height` are capped at 70% of the viewport,
-so long content scrolls inside the editor and the toolbar stays visible; a `height`
-on the field definition wins. Document editables keep their natural height. Unknown
+Data object fields without a configured `height` are fitted to Studio's panel (at most
+70% of the viewport), so long content scrolls inside the editor and the toolbar stays
+visible; a `height` on the field definition wins. Document editables keep their natural
+height unless the template sets one (`pimcore_wysiwyg('intro', { height: 300 })`), in
+which case the text scrolls inside the editing area. Unknown
 items are skipped by CKEditor with a console warning, nothing breaks. Adding an item
 that needs a new plugin means adding the plugin in
 `assets/studio/js/src/modules/ckeditor-editor/editor.tsx` and rebuilding. The AI
@@ -182,6 +184,26 @@ Per-field tweaks remain possible: whatever a field definition or
 `pimcore_studio_ui.wysiwyg.default_editor_config` passes as `editorConfig` is spread
 over the bundle config last, so genuine CKEditor options set there win (note that
 Pimcore 2026.x writes that config Quill-shaped; CKEditor ignores unknown keys).
+
+### Inline editor for document editables
+
+Document editables use the classic editor (toolbar above a framed editing area) by
+default. A template can switch a single editable to CKEditor's inline editor, which
+edits the text in place in the page layout and shows a floating toolbar while the
+field is focused:
+
+```twig
+{{ pimcore_wysiwyg('heroSubline', { editorType: 'inline', placeholder: 'One or two sentences' }) }}
+```
+
+The text keeps the page's own typography; a light frame marks the field on hover
+and while focused. The floating toolbar is not grouped into an overflow menu, so
+narrow columns still show every button. `fullscreen` is left out of the inline
+toolbar (CKEditor's Fullscreen supports the classic and decoupled editor types only).
+CKEditor AI, the shared AI Context and real-time collaboration work the same way.
+The option applies to document editables only; data object fields always use the
+classic editor. The landing page document type (`templates/landing/landing.html.twig`)
+uses it for all its rich text fields.
 
 ### Premium feature gates
 

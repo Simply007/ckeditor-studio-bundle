@@ -5,6 +5,7 @@ import {
   BlockQuote,
   Bold,
   ClassicEditor,
+  type Editor as EditorInstance,
   Essentials,
   Fullscreen,
   GeneralHtmlSupport,
@@ -12,6 +13,7 @@ import {
   Image,
   ImageResize,
   Indent,
+  InlineEditor,
   Italic,
   Link,
   List,
@@ -36,7 +38,14 @@ import {
   type PremiumExtensions
 } from './premium'
 
+export type EditorType = 'classic' | 'inline'
+
 interface EditorProps {
+  /**
+   * 'classic' (toolbar above a framed editing area) or 'inline' (the text is
+   * edited in place in the page layout, the toolbar floats while focused).
+   */
+  editorType?: EditorType
   defaultValue?: string
   onTextChange?: (html: string) => void
   maxCharacters?: number
@@ -55,6 +64,7 @@ interface EditorProps {
 
 const Editor = forwardRef<WysiwygEditorRef, EditorProps>(
   ({
+    editorType = 'classic',
     defaultValue = '',
     onTextChange,
     maxCharacters,
@@ -67,7 +77,7 @@ const Editor = forwardRef<WysiwygEditorRef, EditorProps>(
   ref): React.JSX.Element => {
     const { t } = useTranslation()
 
-    const editorInstanceRef = useRef<ClassicEditor | null>(null)
+    const editorInstanceRef = useRef<EditorInstance | null>(null)
     // The last HTML this editor emitted via onChange. Used to tell apart
     // "value came back from our own onChange" from "value changed externally".
     const lastEmittedRef = useRef<string | null>(null)
@@ -173,6 +183,10 @@ const Editor = forwardRef<WysiwygEditorRef, EditorProps>(
         return null
       }
 
+      // Fullscreen supports only the classic and decoupled editor types.
+      const isInline = editorType === 'inline'
+      const toolbar = isInline ? settings.toolbar.filter((item) => item !== 'fullscreen') : settings.toolbar
+
       return {
         // 'GPL' (open source feature set) unless a license key is configured.
         licenseKey: settings.licenseKey,
@@ -194,16 +208,21 @@ const Editor = forwardRef<WysiwygEditorRef, EditorProps>(
           ImageResize,
           SourceEditing,
           GeneralHtmlSupport,
-          Fullscreen,
+          ...(isInline ? [] : [Fullscreen]),
           ...premium.plugins
         ],
-        toolbar: premium.toolbarItems.length === 0
-          ? settings.toolbar
-          : [
-              ...settings.toolbar,
-              '|',
-              ...premium.toolbarItems.filter((item) => !settings.toolbar.includes(item))
-            ],
+        toolbar: {
+          items: premium.toolbarItems.length === 0
+            ? toolbar
+            : [
+                ...toolbar,
+                '|',
+                ...premium.toolbarItems.filter((item) => !toolbar.includes(item))
+              ],
+          // The floating toolbar is as wide as the editable; in narrow page
+          // columns grouping would hide nearly every button behind the overflow menu.
+          shouldNotGroupWhenFull: isInline
+        },
         table: {
           contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells']
         },
@@ -252,13 +271,13 @@ const Editor = forwardRef<WysiwygEditorRef, EditorProps>(
       }
     }, [defaultValue, premium])
 
-    const handleReady = (editor: ClassicEditor): void => {
+    const handleReady = (editor: EditorInstance): void => {
       editorInstanceRef.current = editor
       syncRootTitle(editor)
       checkCharCount(editor, editor.getData())
     }
 
-    const handleChange = (_event: unknown, editor: ClassicEditor): void => {
+    const handleChange = (_event: unknown, editor: EditorInstance): void => {
       const html = editor.getData()
       lastEmittedRef.current = html
       onTextChange?.(html)
@@ -276,18 +295,30 @@ const Editor = forwardRef<WysiwygEditorRef, EditorProps>(
           />
         ) }
         { config !== null && (
-          <CKEditor
-            config={ config }
-            disabled={ readOnly }
-            editor={ ClassicEditor }
-            onChange={ handleChange }
-            onReady={ handleReady }
-          />
+          editorType === 'inline'
+            ? (
+              <CKEditor
+                config={ config }
+                disabled={ readOnly }
+                editor={ InlineEditor }
+                onChange={ handleChange }
+                onReady={ handleReady }
+              />
+              )
+            : (
+              <CKEditor
+                config={ config }
+                disabled={ readOnly }
+                editor={ ClassicEditor }
+                onChange={ handleChange }
+                onReady={ handleReady }
+              />
+              )
         ) }
       </>
     )
 
-    function checkCharCount (editor: ClassicEditor, html: string): void {
+    function checkCharCount (editor: EditorInstance, html: string): void {
       const domRoot = editor.editing.view.getDomRoot()
       if (domRoot === undefined) {
         return
@@ -303,7 +334,7 @@ const Editor = forwardRef<WysiwygEditorRef, EditorProps>(
       }
     }
 
-    function insertHtml (editor: ClassicEditor, html: string): void {
+    function insertHtml (editor: EditorInstance, html: string): void {
       const viewFragment = editor.data.processor.toView(html)
       const modelFragment = editor.data.toModel(viewFragment)
       editor.model.insertContent(modelFragment)
@@ -317,7 +348,7 @@ const Editor = forwardRef<WysiwygEditorRef, EditorProps>(
         .replace(/>/g, '&gt;')
     }
 
-    function insertElementLink (editor: ClassicEditor, uri: string, id: unknown, type?: string): void {
+    function insertElementLink (editor: EditorInstance, uri: string, id: unknown, type?: string): void {
       const selection = editor.model.document.selection
       if (!selection.isCollapsed) {
         // Text is selected: turn it into a link. Demo limitation: the pimcore_id /
@@ -333,7 +364,7 @@ const Editor = forwardRef<WysiwygEditorRef, EditorProps>(
       )
     }
 
-    function onDropWysiwyg (editor: ClassicEditor, info: DragAndDropInfo): void {
+    function onDropWysiwyg (editor: EditorInstance, info: DragAndDropInfo): void {
       const data = info.data as Record<string, any>
 
       const id = data.id
@@ -415,7 +446,7 @@ const Editor = forwardRef<WysiwygEditorRef, EditorProps>(
  * RTC the fix syncs to the channel. Root attributes are not part of getData(),
  * so the field value does not change.
  */
-function syncRootTitle (editor: ClassicEditor): void {
+function syncRootTitle (editor: EditorInstance): void {
   const configured = (editor.config.get('roots') as Record<string, { title?: unknown, description?: unknown }> | undefined)?.main
   const title = typeof configured?.title === 'string' ? configured.title : null
   const description = typeof configured?.description === 'string' ? configured.description : null
