@@ -3,23 +3,30 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
 
 jobs:
   php:
+    name: PHP ${{ matrix.php }}
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['8.3', '8.4']
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: ${{ matrix.php }}
           tools: composer
+          coverage: none
       - name: Validate composer.json
-        run: composer validate --no-check-lock --no-check-publish
+        run: composer validate --strict --no-check-lock
       - name: Lint PHP
         run: find src -name '*.php' -print0 | xargs -0 -n1 php -l
 
   frontend:
+    name: Frontend
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -32,9 +39,21 @@ jobs:
           cache: npm
           cache-dependency-path: assets/studio/package-lock.json
       - run: npm ci
-      - run: npm run check-types
+      - name: Type check
+        run: npm run check-types
+      - name: Record the committed build id
+        run: ls ../../public/studio/build > "$RUNNER_TEMP/committed-build"
       - name: Production build
         run: npm run build
+      # The build id is a fingerprint of the frontend source, so a different id
+      # means the source changed without the committed build being regenerated.
+      - name: Committed build matches the source
+        run: |
+          ls ../../public/studio/build > "$RUNNER_TEMP/fresh-build"
+          if ! diff "$RUNNER_TEMP/committed-build" "$RUNNER_TEMP/fresh-build"; then
+            echo "::error::public/studio/build is stale: run 'npm run build' in assets/studio and commit the output."
+            exit 1
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: studio-build
