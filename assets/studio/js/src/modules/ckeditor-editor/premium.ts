@@ -1,19 +1,19 @@
 /**
  * Premium feature wiring: CKEditor AI and real-time collaboration.
  *
- * The `ckeditor5-premium-features` package (same version as `ckeditor5`) is
- * loaded through dynamic import() ONLY when a license key is configured AND at
- * least one premium gate is enabled. The premium code and CSS therefore live in
- * their own async chunks: with no key, or with all gates off, the editor
- * initializes exactly as the plain open source (GPL) build and no premium chunk
- * is even fetched.
+ * The premium features (and, on this path, CKEditor core with them) come from
+ * the CKEditor CDN at the bundled version, ONLY when a license key is
+ * configured AND at least one premium gate is enabled (see core.ts). No premium
+ * code ships in this package: with no key, or with all gates off, the editor
+ * runs the bundled open source build and nothing is fetched from the CDN.
  *
  * Gate behavior stays forgiving: an enabled gate whose prerequisites are
  * missing (no key, no Cloud Services credentials, no collaboration channel id)
  * logs a console warning and keeps the free feature set, so a misconfigured
  * instance never breaks.
  */
-import { type EditorConfig } from 'ckeditor5'
+import type { EditorConfig } from 'ckeditor5'
+import type { Core, Premium } from './core'
 import { type CKEditorStudioSettings } from './settings'
 
 export interface PremiumExtensions {
@@ -83,22 +83,18 @@ export interface PremiumLoadOptions {
 }
 
 /**
- * Dynamically imports `ckeditor5-premium-features` (code + CSS) and builds the
- * plugin list and config for the enabled gates. Callers must guard with
- * isPremiumRequested(): this function assumes a license key is present.
+ * Builds the plugin list and config for the enabled gates from the CDN-loaded
+ * premium features (`premium`) and CKEditor core (`core`, used for the shared
+ * AI Context). Callers must guard with isPremiumRequested(): this function
+ * assumes a license key is present.
  */
 export const loadPremiumExtensions = async (
   settings: CKEditorStudioSettings,
-  options: PremiumLoadOptions
+  options: PremiumLoadOptions,
+  premium: Premium,
+  core: Core
 ): Promise<PremiumExtensions> => {
   const { ai, realtimeCollaboration: rtc } = settings.premium
-
-  // The only reference to the premium package: rspack splits it (and its CSS)
-  // into async chunks that are fetched here and only here.
-  const [premium] = await Promise.all([
-    import('ckeditor5-premium-features'),
-    import('ckeditor5-premium-features/ckeditor5-premium-features.css')
-  ])
 
   const extensions: PremiumExtensions = {
     plugins: [],
@@ -151,7 +147,7 @@ export const loadPremiumExtensions = async (
     // editor integration and quick actions.
     const element = options.element as { type: string, id: number | string }
     const { acquireSharedContext } = await import('./ai-context')
-    const shared = acquireSharedContext(premium, {
+    const shared = acquireSharedContext(premium, core, {
       key: `pimcore-${element.type}-${element.id}`,
       anchor: options.anchor as HTMLElement,
       licenseKey: settings.licenseKey,

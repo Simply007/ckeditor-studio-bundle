@@ -15,8 +15,8 @@ Pimcore 2026.3.x with Pimcore Studio 2026.3.x.
 Status: the core integration is runtime-tested end to end on the demo stack (see
 `TESTING.md`); the runtime configuration described below is build-tested and
 statically verified. The premium feature path (CKEditor AI, real-time collaboration,
-with the bundle's own Cloud Services token endpoint) is loaded on demand behind
-dynamic imports and was verified live in Studio with a trial key (see "Testing
+with the bundle's own Cloud Services token endpoint) is loaded on demand from the
+CKEditor CDN and was verified live in Studio with a trial key (see "Testing
 premium locally"). Experiment log on the agent skills used to build it: see
 `SKILL-FINDINGS.md`.
 
@@ -55,27 +55,24 @@ Pimcore Studio is a module-federation host. This bundle contributes a remote:
 
 ## Install and enable
 
-The package is not on Packagist yet; add the GitHub repository to your project's
-`composer.json` first:
-
-```json
-"repositories": [
-  { "type": "vcs", "url": "https://github.com/Simply007/ckeditor-studio-bundle" }
-]
-```
-
-Then, inside the PHP container (host PHP often lacks Pimcore's extensions):
+The package is on Packagist as
+[`simply007/ckeditor-studio-bundle`](https://packagist.org/packages/simply007/ckeditor-studio-bundle).
+Inside the PHP container (host PHP often lacks Pimcore's extensions):
 
 ```bash
 # 1. Composer
-composer require simply007/ckeditor-studio-bundle:^0.1
+composer require simply007/ckeditor-studio-bundle
+```
 
-# 2. Enable the bundle (writes config/bundles.php)
-docker compose exec php bin/console pimcore:bundle:enable CKEditorStudioBundle
+```php
+// 2. config/bundles.php: register the bundle
+Simply007\CKEditorStudioBundle\CKEditorStudioBundle::class => ['all' => true],
+```
 
+```bash
 # 3. Publish assets and clear cache
-docker compose exec php bin/console assets:install --symlink
-docker compose exec php bin/console cache:clear
+bin/console assets:install public --symlink --relative
+bin/console cache:clear
 ```
 
 Other editor bundles (for example PimcoreQuillBundle) can stay enabled; pick the
@@ -112,6 +109,19 @@ priority -1000 that records Studio's built-in editor before any editor bundle ru
 and the selector at priority 1000 that runs after every other editor bundle and
 applies the configured choice. Applies to data object fields and document editables
 (the editmode iframe bootstraps plugins the same way).
+
+**Per field.** A field can override the global choice with an `editor` key in its
+editor config (`ckeditor`, `quill` or `default`). On a document editable that is a
+Twig option:
+
+```twig
+{{ pimcore_wysiwyg('teaser', { editor: 'quill' }) }}
+```
+
+On a data object field, put `{"editor": "quill"}` into the field's editor
+configuration in the class editor. Fields without the key follow
+`ckeditor_studio.editor`. Unavailable choices fall back to CKEditor with a console
+warning, as above.
 
 ### License key gating
 
@@ -224,12 +234,16 @@ classic editor. The landing page document type of the guidepost demo repository
 ### Premium feature gates
 
 Two premium features are wired behind config gates: CKEditor AI and real-time
-collaboration. The premium code (`ckeditor5-premium-features`, pinned to the exact
-same version as `ckeditor5`) is loaded by the browser through a dynamic import ONLY
-when both a license key is configured and at least one gate is enabled. With no key,
-or with the gates off, the editor initializes exactly as the plain open source build,
-no premium chunk is even fetched (the premium code and CSS live in their own async
-chunks), and Studio's Content Security Policy stays untouched. A gate whose
+collaboration. The premium code is not part of this package. When both a license key
+is configured and at least one gate is enabled, the browser loads CKEditor core and
+the premium features from the CKEditor CDN (`cdn.ckeditor.com`), at exactly the
+`ckeditor5` version this build was compiled against, and the bundle's CSP subscriber
+allows that origin. With no key, or with the gates off, the editor runs the bundled
+open source build, nothing is fetched from the CDN, and Studio's Content Security
+Policy stays untouched. Core and premium always come from the same source: CKEditor
+refuses to run when its core is loaded twice on one page, so the premium path takes
+the editor and the open source plugins from the CDN as well (see
+`assets/studio/js/src/modules/ckeditor-editor/core.ts`). A gate whose
 prerequisites are missing logs a console warning and keeps the free feature set, so
 a misconfigured instance never breaks. The wiring lives in
 `assets/studio/js/src/modules/ckeditor-editor/premium.ts`.
@@ -382,8 +396,8 @@ via npm, so use a key valid for self-hosted use. Then:
 What to expect (verified live on 2026-11-05 with a long-term trial, Chrome):
 
 - The console shows CKEditor's trial license notice and no license error.
-- The premium chunks load only now; the token endpoint returns `200` for the logged-in
-  user.
+- CKEditor and the premium features load from `cdn.ckeditor.com` only now; the token
+  endpoint returns `200` for the logged-in user.
 - The AI panel is docked next to the content (not over it); the toolbar carries the
   AI and AI Quick Actions buttons. A chat message such as "Summarize this document in one
   sentence." returns an answer about the current document.
@@ -394,8 +408,8 @@ What to expect (verified live on 2026-11-05 with a long-term trial, Chrome):
 - On a document with several editables (the Home page has five), the chat lists all
   of them by title and an edit request that names one field ("add a sentence to the
   Intro that mentions the Reference points") lands in that field only.
-- Set both gates back to `0` (or remove the key) and `cache:clear`: no premium chunk
-  loads and Studio's CSP is back to its original `connect-src`.
+- Set both gates back to `0` (or remove the key) and `cache:clear`: nothing loads from
+  the CDN and Studio's CSP is back to its original policy.
 
 Backend prerequisites beyond the key, with pointers:
 
@@ -416,7 +430,7 @@ Backend prerequisites beyond the key, with pointers:
   editor bundle that also uses an extreme priority could still race it; Studio itself
   has no slot arbitration (see
   [issue #2](https://github.com/Simply007/pcdd26-pimcore-ai-guidepost/issues/2) for the
-  upstream angle). Per-class or per-field editor choice is not implemented.
+  upstream angle, and `docs/proposals/studio-editor-arbitration.md`).
 - Document editables are identified from the editmode iframe DOM
   (`#pimcore_editable_<name>`, `window.pimcore_document_id`) because Studio core passes
   neither; a Pimcore change to that markup would need a matching change here.
@@ -463,6 +477,13 @@ public/studio/build/<id>/    Committed frontend build (entrypoints.json consumed
   Studio's SDK types at build time and its module federation remote at runtime.
 - Releases are git tags (`v0.1.0` first). CI runs `php -l`, the TypeScript check and
   the production build on every push.
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) explains how the bundle hooks into Studio, the
+  code map, and the build and release steps.
+- [`skills/ckeditor-studio-bundle/`](skills/ckeditor-studio-bundle/SKILL.md) is an agent
+  skill for installing and configuring the bundle, with eval cases in `evals/evals.json`
+  (run each prompt with and without the skill and compare).
+- `docs/proposals/studio-editor-arbitration.md` sketches how Studio itself could pick
+  between editor bundles.
 - `TESTING.md` is the runtime test plan written against the guidepost demo stack;
   `SKILL-FINDINGS.md` records what the agent skills used to build the bundle got
   right and wrong.
@@ -474,8 +495,8 @@ In short: this bundle is open source (GPL-2.0-or-later). The CKEditor premium fe
 | Part | License | Where it is |
 |---|---|---|
 | This bundle's own code (PHP, TypeScript) | GPL-2.0-or-later, see [`LICENSE`](LICENSE) | `src/`, `config/`, `assets/` |
-| CKEditor open source (`ckeditor5`) | Dual: GPL-2.0-or-later, or commercial terms from CKSource | Bundled in the committed build |
-| CKEditor premium features (`ckeditor5-premium-features`: CKEditor AI, real-time collaboration and others) | Commercial license from CKSource, not covered by the GPL | Bundled in the committed build, loaded only when a license key is configured and a premium gate is on |
+| CKEditor open source (`ckeditor5`) | Dual: GPL-2.0-or-later, or commercial terms from CKSource | Bundled in the committed build (open source path) |
+| CKEditor premium features (`ckeditor5-premium-features`: CKEditor AI, real-time collaboration and others) | Commercial license from CKSource, not covered by the GPL | Not included in this package: loaded from the CKEditor CDN only when a license key is configured and a premium gate is on |
 | Other libraries in the build (React and helpers) | MIT, Apache-2.0, BSD, ISC | Notices in the `*.LICENSE.txt` files next to the build output |
 | Pimcore and Pimcore Studio | Pimcore Open Core License (POCL), or commercial terms from Pimcore | Not included in this package: the bundle uses Studio's SDK at runtime |
 
@@ -484,6 +505,6 @@ What this means in practice:
 - **Without a license key** the editor runs with `licenseKey: 'GPL'` and only open source CKEditor code is executed.
 - **Running** Pimcore with this bundle on your own servers is use, not distribution, so the GPL's distribution terms do not come into play.
 - **Distributing** a project that combines this bundle with Pimcore (for example, an agency handing a project to a client) is where licenses meet: the GPL covers the bundle and CKEditor, the POCL covers Pimcore, and the POCL is not an open source license. Check that the combination works for your case. A CKEditor commercial license lets you use CKEditor under commercial terms instead of the GPL.
-- **Premium features** (CKEditor AI, real-time collaboration, and others) always need a CKEditor commercial or trial license key: <https://portal.ckeditor.com>.
+- **Premium features** (CKEditor AI, real-time collaboration, and others) always need a CKEditor commercial or trial license key: <https://portal.ckeditor.com>. CKSource serves that code from its CDN under your license; this package only contains the code that loads it.
 
 More: [CKEditor licensing options](https://ckeditor.com/legal/ckeditor-licensing-options), [CKEditor pricing](https://ckeditor.com/pricing), [Pimcore licensing](https://pimcore.com/en/pricing).

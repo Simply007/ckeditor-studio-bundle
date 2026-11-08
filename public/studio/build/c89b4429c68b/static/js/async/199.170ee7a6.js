@@ -1,0 +1,25 @@
+"use strict";(self.chunk_ckeditor_studio_bundle=self.chunk_ckeditor_studio_bundle||[]).push([["199"],{5306(e,t,i){i.d(t,{acquireSharedContext:()=>s});let o=new Map,s=(e,t,i)=>{let s=o.get(i.key);if(void 0===s){let l="sidebar"===i.container?new r(i.anchor,i.presence):null;s={refs:0,destroyTimer:null,panel:l,contextPromise:n(e,t,i,l)},o.set(i.key,s)}null!==s.destroyTimer&&(clearTimeout(s.destroyTimer),s.destroyTimer=null),s.refs++;let l=s,a=!1;return{contextPromise:l.contextPromise,release:()=>{a||(a=!0,l.refs--,l.refs>0||(l.destroyTimer=setTimeout(()=>{l.refs>0||o.get(i.key)!==l||(o.delete(i.key),l.contextPromise.then(async e=>{await e.destroy()}).catch(e=>{console.warn("[ckeditor-studio-bundle] Destroying the shared AI context failed.",e)}).finally(()=>{var e;null==(e=l.panel)||e.destroy()}))},1500)))}}},n=async(e,t,i,o)=>{let s=[t.CloudServices,e.AIChat,e.AIChatHistory,e.AIChatShortcuts,e.AIReviewMode,e.AITranslate],n={licenseKey:i.licenseKey,cloudServices:i.cloudServices,collaboration:{channelId:i.key},ai:{container:null!==o?{type:"sidebar",element:o.aiHost,visibleByDefault:!0,collapsible:!0}:{type:"overlay"},...null!==o?{overlayContainer:o.ownerDocument.body}:{},...i.aiConfig}};i.presence&&null!==o&&(s.push(e.PresenceList),n.presenceList={container:o.presenceHost}),n.plugins=s;let r=await t.Context.create(n);return null==o||o.attach(r),r};class r{attach(e){let t=e.plugins;if(!t.has("AITabs"))return;let i=t.get("AITabs").view;if(null==i||"function"!=typeof i.on)return;let o=()=>{this.visible=!1!==i.isVisible,this.layout()};i.on("change:isVisible",o),o()}layout(){let e=this.ownerDocument.defaultView??window,t=l(this.isBodyRoot?e.innerWidth:this.root.getBoundingClientRect().width),i=this.isBodyRoot||this.root.getClientRects().length>0,o=this.visible&&i;if(this.element.style.display=o?"":"none",this.root.style.paddingRight=this.visible?`${t+12}px`:this.previousPaddingRight,!o)return;if(this.isBodyRoot)return void Object.assign(this.element.style,{top:"0px",right:"0px",left:"auto",bottom:"0px",width:`${t}px`,height:"auto"});let s=this.root.getBoundingClientRect(),n=Math.max(0,this.root.offsetWidth-this.root.clientWidth),r=s.top,a=s.right-n-t;Object.assign(this.element.style,{top:`${r}px`,left:`${a}px`,right:"auto",bottom:"auto",width:`${t}px`,height:`${this.root.clientHeight}px`});let d=this.element.getBoundingClientRect(),h=d.left-a,c=d.top-r;(Math.abs(h)>.5||Math.abs(c)>.5)&&(this.element.style.left=`${a-h}px`,this.element.style.top=`${r-c}px`)}destroy(){var e;(this.ownerDocument.defaultView??window).removeEventListener("resize",this.onWindowResize),null==(e=this.resizeObserver)||e.disconnect(),this.root.style.paddingRight=this.previousPaddingRight,this.element.remove()}constructor(e,t){var i;this.visible=!0,this.ownerDocument=e.ownerDocument,this.root=a(e),this.isBodyRoot=this.root===this.ownerDocument.body||this.root===this.ownerDocument.documentElement,this.previousPaddingRight=this.root.style.paddingRight,h(this.ownerDocument),this.element=this.ownerDocument.createElement("div"),this.element.className="ckeditor-studio-ai-panel",this.presenceHost=this.ownerDocument.createElement("div"),this.presenceHost.className="ckeditor-studio-ai-panel__presence",this.presenceHost.hidden=!t,this.aiHost=this.ownerDocument.createElement("div"),this.aiHost.className="ckeditor-studio-ai-panel__ai",this.element.append(this.presenceHost,this.aiHost),(this.isBodyRoot?this.ownerDocument.body:this.root).appendChild(this.element);const o=this.ownerDocument.defaultView??window;this.onWindowResize=()=>{this.layout()},o.addEventListener("resize",this.onWindowResize),this.resizeObserver="function"==typeof o.ResizeObserver?new o.ResizeObserver(()=>{this.layout()}):null,null==(i=this.resizeObserver)||i.observe(this.root),this.layout()}}let l=e=>Math.round(Math.min(440,Math.max(300,.32*e))),a=e=>{let t=e.ownerDocument.defaultView??window,i=e.parentElement;for(;null!==i&&i!==e.ownerDocument.body;){let e=t.getComputedStyle(i).overflowY;if(("auto"===e||"scroll"===e)&&i.clientHeight>0)return i;i=i.parentElement}return e.ownerDocument.body},d="ckeditor-studio-ai-panel-styles",h=e=>{if(null!==e.getElementById(d))return;let t=e.createElement("style");t.id=d,t.textContent=`
+    .ckeditor-studio-ai-panel {
+      position: fixed;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      background: var(--ck-color-base-background, #fff);
+      border-left: 1px solid var(--ck-color-base-border, #ccced1);
+    }
+    .ckeditor-studio-ai-panel__presence:not([hidden]) {
+      flex-shrink: 0;
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--ck-color-base-border, #ccced1);
+    }
+    .ckeditor-studio-ai-panel__ai {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+    }
+    .ckeditor-studio-ai-panel__ai .ck.ck-ai-tabs {
+      width: 100%;
+      height: 100%;
+    }
+  `,e.head.appendChild(t)}}}]);

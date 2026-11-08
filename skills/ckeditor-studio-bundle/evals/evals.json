@@ -1,0 +1,61 @@
+{
+  "skill_name": "ckeditor-studio-bundle",
+  "description": "Run each prompt in a Pimcore 2026.3 project with and without the skill and compare the answers against the assertions.",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Add CKEditor to our Pimcore 2026.3 project so editors get it in Pimcore Studio instead of Quill.",
+      "expected_output": "Installs simply007/ckeditor-studio-bundle with Composer inside the PHP container, registers Simply007\\CKEditorStudioBundle\\CKEditorStudioBundle in config/bundles.php, runs assets:install and cache:clear, and keeps PimcoreQuillBundle installed.",
+      "assertions": [
+        "Uses composer require simply007/ckeditor-studio-bundle",
+        "Registers Simply007\\CKEditorStudioBundle\\CKEditorStudioBundle in config/bundles.php",
+        "Runs bin/console assets:install and bin/console cache:clear",
+        "Does not uninstall or disable PimcoreQuillBundle",
+        "Does not suggest the ExtJS admin's CKEditor configuration or a CKEditor 4 setup"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "We want CKEditor everywhere except the 'teaser' editable on our article page template, which should stay on Quill.",
+      "expected_output": "Keeps ckeditor_studio.editor at ckeditor and sets editor: 'quill' on that one editable in Twig.",
+      "assertions": [
+        "Leaves the global ckeditor_studio.editor at ckeditor (or default)",
+        "Uses pimcore_wysiwyg('teaser', { editor: 'quill' }) or an equivalent per-field editor key",
+        "Mentions that PimcoreQuillBundle must stay enabled for Quill to render"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Turn on CKEditor AI in Pimcore Studio. Here is our trial license key: <key>.",
+      "expected_output": "Puts the key and the Cloud Services values into the gitignored .env.local, enables the AI gate with CKEDITOR_PREMIUM_AI=1, clears the cache, and explains that the premium code is loaded from cdn.ckeditor.com.",
+      "assertions": [
+        "Stores the license key in .env.local (or another uncommitted env file), not in committed yaml",
+        "Mentions the Cloud Services variables CKEDITOR_CS_ENVIRONMENT_ID, CKEDITOR_CS_ACCESS_KEY and CKEDITOR_CS_WEBSOCKET_URL",
+        "Enables the gate through CKEDITOR_PREMIUM_AI=1 or ckeditor_studio.premium.ai.enabled",
+        "Runs cache:clear and does not ask for a frontend rebuild",
+        "Does not tell the user to npm install ckeditor5-premium-features into the project"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Make the hero text on our landing page editable in place, without a big toolbar frame around it.",
+      "expected_output": "Uses the inline editor option on the document editable: pimcore_wysiwyg(..., { editorType: 'inline' }).",
+      "assertions": [
+        "Uses editorType: 'inline' on the pimcore_wysiwyg editable",
+        "Does not suggest switching the whole project to a different editor",
+        "Does not add the fullscreen button to the inline toolbar"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "After installing the CKEditor bundle, data object fields in Studio still show the old editor. What should I check?",
+      "expected_output": "Checks the bundle registration, ckeditor_studio.editor and per-field editor keys, runs assets:install and cache:clear, and reloads Studio.",
+      "assertions": [
+        "Checks that the bundle is registered in config/bundles.php",
+        "Checks ckeditor_studio.editor and any per-field editor key",
+        "Runs assets:install and cache:clear and reloads Studio",
+        "Does not recommend editing vendor files"
+      ]
+    }
+  ]
+}
