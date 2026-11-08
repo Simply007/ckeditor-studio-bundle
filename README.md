@@ -449,11 +449,10 @@ public/studio/build/<id>/    Committed frontend build (entrypoints.json consumed
 
 ## Development and releases
 
-- Frontend build: the committed build under `public/studio/build/<build-id>/` ships
-  with the package, so consumers need no Node toolchain. Maintainers rebuild with
+- Frontend build: committed under `public/studio/build/<build-id>/`, see "Why the
+  repository contains a compiled frontend" below. Maintainers rebuild with
   `npm ci && npm run build` in `assets/studio/` and commit the output together with
-  the source change. (Pimcore's own bundles ship a zip via
-  `BuildArchiveProviderInterface` instead; switching to that route is optional.)
+  the source change.
 - Studio registration: nothing manual. `extra.pimcore.bundles` makes
   `pimcore:bundle:enable CKEditorStudioBundle` work, the prepended `studio_ui.yaml`
   registers the entry point and app config providers only when
@@ -466,6 +465,32 @@ public/studio/build/<id>/    Committed frontend build (entrypoints.json consumed
 - `TESTING.md` is the runtime test plan written against the guidepost demo stack;
   `SKILL-FINDINGS.md` records what the agent skills used to build the bundle got
   right and wrong.
+
+## Why the repository contains a compiled frontend
+
+Most PHP packages contain only source code. This one also commits a compiled
+JavaScript build in `public/studio/build/<build-id>/`, and pull requests that touch the
+frontend show large minified diffs there. That is on purpose:
+
+- **Studio runs compiled code.** Pimcore Studio is a React app that loads each bundle's
+  frontend at runtime as a module federation remote. It reads the bundle's
+  `entrypoints.json` and JavaScript from `public/bundles/<bundle>/studio/build/<build-id>/`
+  (published by `assets:install`). It never compiles the TypeScript in `assets/studio/`.
+- **Composer does not build anything.** Composer installs the repository exactly as it
+  is at the release tag (Packagist serves the tag's archive) and runs no Node step.
+  Pimcore projects usually have no Node toolchain either. Whatever is committed at the
+  tag is what Studio gets.
+- **The build id ties build and source together.** The folder name is a fingerprint of
+  the frontend source, so it changes exactly when the source changes. CI rebuilds on
+  every push and fails when the committed build id does not match the source.
+
+Alternatives, if committed build files become a burden:
+
+| Approach | How it works | Trade-off |
+|---|---|---|
+| Commit the build (current) | Rebuild and commit `public/studio/build/` with every frontend change | Simple, nothing extra at install or runtime; noisy diffs |
+| Build on release tags | CI builds when a `v*` tag is pushed and commits the output only to the release tag or a `release` branch; `main` stays source-only | Clean `main`, same install experience; the release is a CI job instead of a local step |
+| Release archive | Ship the build as a zip that the PHP side extracts on demand through Studio's `BuildArchiveProviderInterface`, the way `pimcore/quill-bundle` does | Fewer files in the package; needs a PHP change and a CI job that produces the zip |
 
 ## Licensing
 
