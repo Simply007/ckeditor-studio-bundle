@@ -22,14 +22,12 @@
  * aside instead of covered. `premium.ai.container: overlay` restores the
  * floating overlay instead.
  *
- * This module is imported only from premium.ts, after the dynamic import of
- * ckeditor5-premium-features, so it never runs (or ships code into the
- * default chunk path) on the free path.
+ * This module is imported only from premium.ts on the premium path, and takes
+ * every CKEditor class from the CDN-loaded core and premium features (see
+ * core.ts), so it never runs on the free path.
  */
-import { CloudServices, Context, type ContextConfig } from 'ckeditor5'
-import type * as PremiumFeatures from 'ckeditor5-premium-features'
-
-type Premium = typeof PremiumFeatures
+import type { Context, ContextConfig } from 'ckeditor5'
+import type { Core, Premium } from './core'
 
 export type AIContainerMode = 'sidebar' | 'overlay'
 
@@ -64,6 +62,7 @@ const registry = new Map<string, Entry>()
  */
 export const acquireSharedContext = (
   premium: Premium,
+  core: Core,
   options: SharedContextOptions
 ): { contextPromise: Promise<Context>, release: () => void } => {
   let entry = registry.get(options.key)
@@ -74,7 +73,7 @@ export const acquireSharedContext = (
       refs: 0,
       destroyTimer: null,
       panel,
-      contextPromise: createContext(premium, options, panel)
+      contextPromise: createContext(premium, core, options, panel)
     }
     registry.set(options.key, entry)
   }
@@ -113,11 +112,11 @@ export const acquireSharedContext = (
   }
 }
 
-const createContext = async (premium: Premium, options: SharedContextOptions, panel: DockedPanel | null): Promise<Context> => {
+const createContext = async (premium: Premium, core: Core, options: SharedContextOptions, panel: DockedPanel | null): Promise<Context> => {
   const plugins: NonNullable<ContextConfig['plugins']> = [
     // AI feature plugins live on the Context: one Chat / History / Review /
     // Translate UI shared by every editor of the element.
-    CloudServices,
+    core.CloudServices,
     premium.AIChat,
     premium.AIChatHistory,
     premium.AIChatShortcuts,
@@ -151,7 +150,7 @@ const createContext = async (premium: Premium, options: SharedContextOptions, pa
 
   config.plugins = plugins
 
-  const context = await Context.create(config)
+  const context = await core.Context.create(config)
   panel?.attach(context)
   return context
 }

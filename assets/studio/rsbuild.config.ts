@@ -7,6 +7,7 @@ import path from 'path'
 import fs from 'fs'
 import packages from './package.json'
 
+const ckeditorVersion: string = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'node_modules', 'ckeditor5', 'package.json'), 'utf8')).version
 const buildId = getBuildGroupId(__dirname)
 const buildRoot = path.resolve(__dirname, '..', '..', 'public', 'studio', 'build')
 const buildPath = path.resolve(buildRoot, buildId)
@@ -48,6 +49,11 @@ export default defineConfig({
   source: {
     entry: {
       main: './js/src/main.ts'
+    },
+    // The premium path loads CKEditor from the CDN at exactly the version the
+    // open source build is compiled against (see modules/ckeditor-editor/core.ts).
+    define: {
+      __CKEDITOR_VERSION__: JSON.stringify(ckeditorVersion)
     },
     decorators: {
       version: 'legacy'

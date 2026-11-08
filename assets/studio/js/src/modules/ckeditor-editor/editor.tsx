@@ -1,29 +1,8 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { CKEditor } from '@ckeditor/ckeditor5-react'
-import {
-  Alignment,
-  BlockQuote,
-  Bold,
-  ClassicEditor,
-  type Editor as EditorInstance,
-  Essentials,
-  Fullscreen,
-  GeneralHtmlSupport,
-  Heading,
-  Image,
-  ImageResize,
-  Indent,
-  InlineEditor,
-  Italic,
-  Link,
-  List,
-  Paragraph,
-  SourceEditing,
-  Table,
-  TableToolbar,
-  Underline,
-  type EditorConfig
-} from 'ckeditor5'
+// Types only: the CKEditor classes come from core.ts at runtime (bundled open
+// source build, or the CDN build on the premium path; never both).
+import type { Editor as EditorInstance, EditorConfig } from 'ckeditor5'
 import 'ckeditor5/ckeditor5.css'
 import { type WysiwygEditorRef } from '@pimcore/studio-ui-bundle/modules/wysiwyg'
 import { type DragAndDropInfo, createImageThumbnailUrl } from '@pimcore/studio-ui-bundle/components'
@@ -37,6 +16,14 @@ import {
   loadPremiumExtensions,
   type PremiumExtensions
 } from './premium'
+import { type Core, loadCloudCore, loadOpenSourceCore } from './core'
+
+const TAG = '[ckeditor-studio-bundle]'
+
+interface EditorRuntime {
+  core: Core
+  premium: PremiumExtensions
+}
 
 export type EditorType = 'classic' | 'inline'
 
@@ -105,17 +92,33 @@ const Editor = forwardRef<WysiwygEditorRef, EditorProps>(
     // editable around it and the scroll container for the docked AI panel.
     const anchorRef = useRef<HTMLSpanElement | null>(null)
 
-    // Premium path: the extensions resolve asynchronously (dynamic import) and
-    // the editor mounts once they are in. Free path: resolved synchronously on
-    // first render with the empty extensions, so the editor initializes exactly
-    // as before and no premium chunk is ever requested.
-    const [premium, setPremium] = useState<PremiumExtensions | null>(
-      premiumRequested ? null : EMPTY_PREMIUM_EXTENSIONS
-    )
+    // The CKEditor code and the premium extensions resolve asynchronously; the
+    // editor mounts once they are in. Open source path: the bundled build,
+    // nothing fetched from the CDN. Premium path: core and premium features
+    // from the CDN (core.ts).
+    const [runtime, setRuntime] = useState<EditorRuntime | null>(null)
 
     useEffect(() => {
+      let cancelled = false
+      let loaded: PremiumExtensions | null = null
+
+      const startOpenSource = (): void => {
+        loadOpenSourceCore()
+          .then((core) => {
+            if (!cancelled) {
+              setRuntime({ core, premium: EMPTY_PREMIUM_EXTENSIONS })
+            }
+          })
+          .catch((error) => {
+            console.error(`${TAG} Loading the CKEditor build failed.`, error)
+          })
+      }
+
       if (!premiumRequested) {
-        return
+        startOpenSource()
+        return () => {
+          cancelled = true
+        }
       }
 
       // Which element and field this editor edits. Data object fields get both
@@ -137,32 +140,48 @@ const Editor = forwardRef<WysiwygEditorRef, EditorProps>(
         channelId = `pimcore-${identity.element.type}-${identity.element.id}-${identity.field.name}`
       }
 
-      let cancelled = false
-      let loaded: PremiumExtensions | null = null
-      loadPremiumExtensions(settings, {
-        channelId,
-        presenceListContainer: presenceListRef.current,
-        element: identity.element,
-        anchor: anchorRef.current,
-        root: identity.field !== null && identity.element !== null
-          ? {
-              title: identity.field.title,
-              description: `Rich text ${identity.field.kind} "${identity.field.name}" of the Pimcore ${identity.element.type.replace('-', ' ')} with id ${identity.element.id}.`
+      loadCloudCore()
+        .then(async ({ core, premium }) => {
+          try {
+            const extensions = await loadPremiumExtensions(settings, {
+              channelId,
+              presenceListContainer: presenceListRef.current,
+              element: identity.element,
+              anchor: anchorRef.current,
+              root: identity.field !== null && identity.element !== null
+                ? {
+                    title: identity.field.title,
+                    description: `Rich text ${identity.field.kind} "${identity.field.name}" of the Pimcore ${identity.element.type.replace('-', ' ')} with id ${identity.element.id}.`
+                  }
+                : null
+            }, premium, core)
+            if (cancelled) {
+              extensions.release?.()
+              return
             }
-          : null
-      })
-        .then((extensions) => {
-          if (cancelled) {
-            extensions.release?.()
-            return
+            loaded = extensions
+            setRuntime({ core, premium: extensions })
+          } catch (error) {
+            // The CDN core already runs on this page, so the bundled build must
+            // not be loaded any more: keep the CDN core without premium plugins.
+            console.error(`${TAG} Setting up the premium features failed; continuing with the open source features.`, error)
+            if (!cancelled) {
+              setRuntime({ core, premium: EMPTY_PREMIUM_EXTENSIONS })
+            }
           }
-          loaded = extensions
-          setPremium(extensions)
         })
         .catch((error) => {
-          console.error('[ckeditor-studio-bundle] Loading ckeditor5-premium-features failed; falling back to the free feature set.', error)
-          if (!cancelled) {
-            setPremium(EMPTY_PREMIUM_EXTENSIONS)
+          console.error(`${TAG} Loading CKEditor from the CDN failed; falling back to the bundled open source build.`, error)
+          if (cancelled) {
+            return
+          }
+          // If the CDN core itself did run (only a later file failed), reuse it
+          // instead of starting a second copy of CKEditor.
+          const cdnCore = (globalThis as unknown as { CKEDITOR?: Core }).CKEDITOR
+          if (cdnCore !== undefined) {
+            setRuntime({ core: cdnCore, premium: EMPTY_PREMIUM_EXTENSIONS })
+          } else {
+            startOpenSource()
           }
         })
 
@@ -179,9 +198,10 @@ const Editor = forwardRef<WysiwygEditorRef, EditorProps>(
     // still loading). The CKEditor React component does not react to config
     // changes after initialization anyway.
     const config = useMemo((): EditorConfig | null => {
-      if (premium === null) {
+      if (runtime === null) {
         return null
       }
+      const { core, premium } = runtime
 
       // Fullscreen supports only the classic and decoupled editor types.
       const isInline = editorType === 'inline'
@@ -191,24 +211,24 @@ const Editor = forwardRef<WysiwygEditorRef, EditorProps>(
         // 'GPL' (open source feature set) unless a license key is configured.
         licenseKey: settings.licenseKey,
         plugins: [
-          Essentials,
-          Paragraph,
-          Heading,
-          Bold,
-          Italic,
-          Underline,
-          Alignment,
-          Link,
-          List,
-          Indent,
-          BlockQuote,
-          Table,
-          TableToolbar,
-          Image,
-          ImageResize,
-          SourceEditing,
-          GeneralHtmlSupport,
-          ...(isInline ? [] : [Fullscreen]),
+          core.Essentials,
+          core.Paragraph,
+          core.Heading,
+          core.Bold,
+          core.Italic,
+          core.Underline,
+          core.Alignment,
+          core.Link,
+          core.List,
+          core.Indent,
+          core.BlockQuote,
+          core.Table,
+          core.TableToolbar,
+          core.Image,
+          core.ImageResize,
+          core.SourceEditing,
+          core.GeneralHtmlSupport,
+          ...(isInline ? [] : [core.Fullscreen]),
           ...premium.plugins
         ],
         toolbar: {
@@ -251,7 +271,7 @@ const Editor = forwardRef<WysiwygEditorRef, EditorProps>(
         ...(editorConfig ?? {})
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [premium])
+    }, [runtime])
 
     useEffect(() => {
       const editor = editorInstanceRef.current
@@ -262,14 +282,14 @@ const Editor = forwardRef<WysiwygEditorRef, EditorProps>(
       // With real-time collaboration the document state lives in Cloud Services
       // and is synchronized by the RealTimeCollaborativeEditing plugin;
       // overwriting it from the outside would fork the shared state.
-      if (premium?.realtimeCollaborationActive === true) {
+      if (runtime?.premium.realtimeCollaborationActive === true) {
         return
       }
 
       if (defaultValue !== lastEmittedRef.current && defaultValue !== editor.getData()) {
         editor.setData(defaultValue)
       }
-    }, [defaultValue, premium])
+    }, [defaultValue, runtime])
 
     const handleReady = (editor: EditorInstance): void => {
       editorInstanceRef.current = editor
@@ -294,13 +314,13 @@ const Editor = forwardRef<WysiwygEditorRef, EditorProps>(
             ref={ presenceListRef }
           />
         ) }
-        { config !== null && (
+        { config !== null && runtime !== null && (
           editorType === 'inline'
             ? (
               <CKEditor
                 config={ config }
                 disabled={ readOnly }
-                editor={ InlineEditor }
+                editor={ runtime.core.InlineEditor }
                 onChange={ handleChange }
                 onReady={ handleReady }
               />
@@ -309,7 +329,7 @@ const Editor = forwardRef<WysiwygEditorRef, EditorProps>(
               <CKEditor
                 config={ config }
                 disabled={ readOnly }
-                editor={ ClassicEditor }
+                editor={ runtime.core.ClassicEditor }
                 onChange={ handleChange }
                 onReady={ handleReady }
               />
