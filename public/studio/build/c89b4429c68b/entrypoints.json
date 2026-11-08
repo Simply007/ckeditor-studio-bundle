@@ -1,0 +1,35 @@
+{
+  "entrypoints": {
+    "main": {
+      "js": [
+        "/bundles/ckeditorstudio/studio/build/c89b4429c68b/static/js/async/507.ebedb76a.js",
+        "/bundles/ckeditorstudio/studio/build/c89b4429c68b/static/js/async/169.6bc6adbe.js",
+        "/bundles/ckeditorstudio/studio/build/c89b4429c68b/static/js/async/473.2ae93ac9.js",
+        "/bundles/ckeditorstudio/studio/build/c89b4429c68b/static/js/async/596.c4731694.js",
+        "/bundles/ckeditorstudio/studio/build/c89b4429c68b/static/js/109.9df6ada5.js",
+        "/bundles/ckeditorstudio/studio/build/c89b4429c68b/static/js/main.30d8d107.js"
+      ],
+      "css": []
+    },
+    "ckeditor_studio_bundle": {
+      "js": [
+        "/bundles/ckeditorstudio/studio/build/c89b4429c68b/static/js/async/507.ebedb76a.js",
+        "/bundles/ckeditorstudio/studio/build/c89b4429c68b/static/js/async/199.170ee7a6.js",
+        "/bundles/ckeditorstudio/studio/build/c89b4429c68b/static/js/async/__federation_expose_default_export.94f5b1b7.js",
+        "/bundles/ckeditorstudio/studio/build/c89b4429c68b/static/js/async/169.6bc6adbe.js",
+        "/bundles/ckeditorstudio/studio/build/c89b4429c68b/static/js/async/473.2ae93ac9.js",
+        "/bundles/ckeditorstudio/studio/build/c89b4429c68b/static/js/async/596.c4731694.js",
+        "/bundles/ckeditorstudio/studio/build/c89b4429c68b/static/js/remoteEntry.js"
+      ],
+      "css": [
+        "/bundles/ckeditorstudio/studio/build/c89b4429c68b/static/css/async/613.f3898607.css"
+      ]
+    },
+    "exposeRemote": {
+      "js": [
+        "/bundles/ckeditorstudio/studio/build/c89b4429c68b/exposeRemote.js"
+      ],
+      "css": []
+    }
+  }
+}

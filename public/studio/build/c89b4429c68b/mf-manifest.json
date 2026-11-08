@@ -21,7 +21,7 @@
     },
     "globalName": "ckeditor_studio_bundle",
     "pluginVersion": "2.9.3",
-    "publicPath": "/bundles/ckeditorstudio/studio/build/4117050c25d9/"
+    "publicPath": "/bundles/ckeditorstudio/studio/build/c89b4429c68b/"
   },
   "shared": [
     {
@@ -34,7 +34,7 @@
         "js": {
           "async": [],
           "sync": [
-            "static/js/async/596.ce6ca8d4.js"
+            "static/js/async/596.c4731694.js"
           ]
         },
         "css": {
@@ -54,27 +54,7 @@
         "js": {
           "async": [],
           "sync": [
-            "static/js/async/507.f9ecbab2.js"
-          ]
-        },
-        "css": {
-          "async": [],
-          "sync": []
-        }
-      },
-      "fallback": ""
-    },
-    {
-      "id": "ckeditor_studio_bundle:ckeditor5-premium-features",
-      "name": "ckeditor5-premium-features",
-      "version": "49.1.0",
-      "singleton": true,
-      "requiredVersion": "49.1.0",
-      "assets": {
-        "js": {
-          "async": [],
-          "sync": [
-            "static/js/async/749.6ff9a47f.js"
+            "static/js/async/507.ebedb76a.js"
           ]
         },
         "css": {
@@ -94,7 +74,7 @@
         "js": {
           "async": [],
           "sync": [
-            "static/js/async/34.a4757c2f.js"
+            "static/js/async/169.6bc6adbe.js"
           ]
         },
         "css": {
@@ -114,7 +94,7 @@
         "js": {
           "async": [],
           "sync": [
-            "static/js/109.bfca2159.js",
+            "static/js/109.9df6ada5.js",
             "static/js/remoteEntry.js"
           ]
         },
@@ -135,7 +115,7 @@
         "js": {
           "async": [],
           "sync": [
-            "static/js/109.bfca2159.js",
+            "static/js/109.9df6ada5.js",
             "static/js/remoteEntry.js"
           ]
         },
@@ -198,21 +178,17 @@
       "assets": {
         "js": {
           "sync": [
-            "static/js/async/__federation_expose_default_export.1b05e759.js"
+            "static/js/async/__federation_expose_default_export.94f5b1b7.js"
           ],
           "async": [
-            "static/js/async/158.a02b37cf.js",
-            "static/js/async/595.3e261373.js",
-            "static/js/async/199.690230b2.js"
+            "static/js/async/199.170ee7a6.js"
           ]
         },
         "css": {
           "sync": [
             "static/css/async/613.f3898607.css"
           ],
-          "async": [
-            "static/css/async/29.8bc6ee06.css"
-          ]
+          "async": []
         }
       },
       "path": "."
