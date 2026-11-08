@@ -1,9 +1,10 @@
+import React, { forwardRef } from 'react'
 import { type AbstractModule, container } from '@pimcore/studio-ui-bundle'
 import { serviceIds } from '@pimcore/studio-ui-bundle/app'
 import { type ComponentRegistry, componentConfig } from '@pimcore/studio-ui-bundle/modules/app'
-import type React from 'react'
+import { type WysiwygEditorRef, type WysiwygProps } from '@pimcore/studio-ui-bundle/modules/wysiwyg'
 import CKEditorEditor from './ckeditor-editor'
-import { getStudioSettings } from './settings'
+import { type EditorChoice, getStudioSettings } from './settings'
 
 /**
  * Editor selection for Studio's single `wysiwyg.editor` slot.
@@ -25,6 +26,12 @@ import { getStudioSettings } from './settings'
  *     default   Studio's built-in editor
  *
  * So editor bundles can stay enabled side by side and one config value decides.
+ *
+ * Per field, the editor config can override the global choice with an
+ * `editor` key (`ckeditor`, `quill` or `default`): a Twig option on a document
+ * editable (`pimcore_wysiwyg('teaser', { editor: 'quill' })`) or the editor
+ * config of a data object field. The selector therefore registers a small
+ * dispatcher that renders the chosen editor for each field.
  */
 
 const TAG = '[ckeditor-studio-bundle]'
@@ -43,33 +50,71 @@ export const EditorSlotProbeModule: AbstractModule = {
   }
 }
 
+const CHOICES: readonly EditorChoice[] = ['ckeditor', 'quill', 'default']
+
+let otherEditor: React.ComponentType<any> | null = null
+let globalChoice: EditorChoice = 'ckeditor'
+const warned = new Set<string>()
+
+const warnOnce = (key: string, message: string): void => {
+  if (!warned.has(key)) {
+    warned.add(key)
+    console.warn(`${TAG} ${message}`)
+  }
+}
+
+/** The editor component for a choice, falling back to CKEditor with a warning. */
+const resolveEditor = (choice: EditorChoice): React.ComponentType<any> => {
+  if (choice === 'quill') {
+    if (otherEditor !== null) {
+      return otherEditor
+    }
+    warnOnce('quill', 'The editor "quill" is selected, but no other editor bundle registered the wysiwyg editor ' +
+      '(is PimcoreQuillBundle enabled in config/bundles.php?). Falling back to CKEditor.')
+  }
+
+  if (choice === 'default') {
+    if (builtInEditor !== null) {
+      return builtInEditor
+    }
+    warnOnce('default', 'The editor "default" is selected, but Studio\'s built-in editor was not found. Falling back to CKEditor.')
+  }
+
+  return CKEditorEditor
+}
+
+const isChoice = (value: unknown): value is EditorChoice =>
+  typeof value === 'string' && (CHOICES as readonly string[]).includes(value)
+
+/** Renders the editor chosen for this field (editorConfig.editor), or the global choice. */
+export const SelectedEditor = forwardRef<WysiwygEditorRef, WysiwygProps>((props, ref): React.JSX.Element => {
+  const { editor: requested, ...editorConfig } = (props.editorConfig ?? {}) as Record<string, unknown>
+  if (requested !== undefined && !isChoice(requested)) {
+    warnOnce(`invalid-${String(requested)}`, `Unknown editor "${String(requested)}" in a field's editor config; expected ckeditor, quill or default.`)
+  }
+  const Component = resolveEditor(isChoice(requested) ? requested : globalChoice)
+
+  return (
+    <Component
+      { ...props }
+      editorConfig={ editorConfig }
+      ref={ ref }
+    />
+  )
+})
+SelectedEditor.displayName = 'SelectedEditor'
+
 /** Runs last among plugin modules: applies the configured editor. */
 export const CKEditorEditorModule: AbstractModule = {
   onInit: (): void => {
     const componentRegistry = registry()
     const { editor } = getStudioSettings()
     const current = componentRegistry.has(SLOT) ? componentRegistry.get(SLOT) : null
-    const otherBundleRegistered = current !== null && current !== builtInEditor && current !== CKEditorEditor
+    otherEditor = current !== null && current !== builtInEditor && current !== CKEditorEditor && current !== SelectedEditor
+      ? current
+      : null
+    globalChoice = editor
 
-    if (editor === 'quill') {
-      if (otherBundleRegistered) {
-        // Keep the other editor bundle's registration (for example Quill).
-        return
-      }
-      console.warn(
-        `${TAG} ckeditor_studio.editor is "quill", but no other editor bundle registered the wysiwyg editor ` +
-        '(is PimcoreQuillBundle enabled in config/bundles.php?). Falling back to CKEditor.'
-      )
-    }
-
-    if (editor === 'default') {
-      if (builtInEditor !== null) {
-        componentRegistry.override({ component: builtInEditor, name: SLOT })
-        return
-      }
-      console.warn(`${TAG} ckeditor_studio.editor is "default", but Studio's built-in editor was not found. Falling back to CKEditor.`)
-    }
-
-    componentRegistry.override({ component: CKEditorEditor, name: SLOT })
+    componentRegistry.override({ component: SelectedEditor, name: SLOT })
   }
 }
