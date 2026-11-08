@@ -1,5 +1,5 @@
 {
-  "name": "chrastina/ckeditor-studio-bundle",
+  "name": "simply007/ckeditor-studio-bundle",
   "description": "CKEditor as the rich text editor in Pimcore Studio: classic and inline editors, configurable toolbar, optional CKEditor AI and real-time collaboration. Community package, not affiliated with Pimcore GmbH.",
   "license": "GPL-2.0-or-later",
   "type": "pimcore-bundle",
@@ -28,13 +28,13 @@
   },
   "autoload": {
     "psr-4": {
-      "Chrastina\\CKEditorStudioBundle\\": "src/"
+      "Simply007\\CKEditorStudioBundle\\": "src/"
     }
   },
   "extra": {
     "pimcore": {
       "bundles": [
-        "Chrastina\\CKEditorStudioBundle\\CKEditorStudioBundle"
+        "Simply007\\CKEditorStudioBundle\\CKEditorStudioBundle"
       ]
     }
   }

@@ -33,7 +33,7 @@ premium locally"). Experiment log on the agent skills used to build it: see
 
 Pimcore Studio is a module-federation host. This bundle contributes a remote:
 
-1. The Symfony bundle (`Chrastina\CKEditorStudioBundle`) registers a
+1. The Symfony bundle (`Simply007\CKEditorStudioBundle`) registers a
    `WebpackEntryPointProvider` (tag `pimcore_studio_ui.webpack_entry_point_provider`,
    plus the document editor iframe tag) that points Studio at the committed rsbuild
    output in `public/studio/build/<build-id>/entrypoints.json`.
@@ -66,7 +66,7 @@ Then, inside the PHP container (host PHP often lacks Pimcore's extensions):
 
 ```bash
 # 1. Composer
-composer require chrastina/ckeditor-studio-bundle:^0.1
+composer require simply007/ckeditor-studio-bundle:^0.1
 
 # 2. Enable the bundle (writes config/bundles.php)
 docker compose exec php bin/console pimcore:bundle:enable CKEditorStudioBundle
@@ -436,7 +436,7 @@ Backend prerequisites beyond the key, with pointers:
 ## Layout
 
 ```
-composer.json                PHP package (type: pimcore-bundle, PSR-4 Chrastina\CKEditorStudioBundle)
+composer.json                PHP package (type: pimcore-bundle, PSR-4 Simply007\CKEditorStudioBundle)
 src/                         Bundle class, configuration, app config provider, entry point provider,
                              Cloud Services token generator + controller, premium CSP subscriber
 config/studio_ui.yaml        Tags the providers for Studio UI (incl. document editor iframe)
