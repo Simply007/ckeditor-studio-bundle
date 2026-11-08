@@ -7,6 +7,8 @@ Pimcore Community Dev Days 2026 and was extracted from the
 [guidepost demo repository](https://github.com/Simply007/pcdd26-pimcore-ai-guidepost),
 which stays the reference installation.
 
+![CKEditor in Pimcore Studio: a blog post data object edited with CKEditor, with the CKEditor AI chat docked next to it](docs/images/ckeditor-in-pimcore-studio.jpg)
+
 Community package: not an official Pimcore or CKEditor product. Supported line:
 Pimcore 2026.3.x with Pimcore Studio 2026.3.x.
 
