@@ -4,8 +4,8 @@ declare(strict_types=1);
 /**
  * CKEditor integration bundle for Pimcore Studio.
  *
- * Conference demo (Pimcore Community Dev Days 2026), modeled architecturally
- * on pimcore/quill-bundle. MIT licensed.
+ * Modeled architecturally on pimcore/quill-bundle. Licensed under
+ * GPL-2.0-or-later, see LICENSE.
  */
 
 namespace Simply007\CKEditorStudioBundle\EventSubscriber;
