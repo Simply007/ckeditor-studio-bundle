@@ -10,7 +10,7 @@
     "wysiwyg",
     "rich-text-editor"
   ],
-  "homepage": "https://github.com/Simply007/ckeditor-studio-bundle",
+  "homepage": "https://github.com/Simply007/pimcore-studio-ckeditor-bundle",
   "authors": [
     {
       "name": "Ondrej Chrastina",
@@ -18,8 +18,8 @@
     }
   ],
   "support": {
-    "issues": "https://github.com/Simply007/ckeditor-studio-bundle/issues",
-    "source": "https://github.com/Simply007/ckeditor-studio-bundle"
+    "issues": "https://github.com/Simply007/pimcore-studio-ckeditor-bundle/issues",
+    "source": "https://github.com/Simply007/pimcore-studio-ckeditor-bundle"
   },
   "require": {
     "php": ">=8.3",

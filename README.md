@@ -55,27 +55,24 @@ Pimcore Studio is a module-federation host. This bundle contributes a remote:
 
 ## Install and enable
 
-The package is not on Packagist yet; add the GitHub repository to your project's
-`composer.json` first:
-
-```json
-"repositories": [
-  { "type": "vcs", "url": "https://github.com/Simply007/ckeditor-studio-bundle" }
-]
-```
-
-Then, inside the PHP container (host PHP often lacks Pimcore's extensions):
+The package is on Packagist as
+[`simply007/ckeditor-studio-bundle`](https://packagist.org/packages/simply007/ckeditor-studio-bundle).
+Inside the PHP container (host PHP often lacks Pimcore's extensions):
 
 ```bash
 # 1. Composer
-composer require simply007/ckeditor-studio-bundle:^0.1
+composer require simply007/ckeditor-studio-bundle
+```
 
-# 2. Enable the bundle (writes config/bundles.php)
-docker compose exec php bin/console pimcore:bundle:enable CKEditorStudioBundle
+```php
+// 2. config/bundles.php: register the bundle
+Simply007\CKEditorStudioBundle\CKEditorStudioBundle::class => ['all' => true],
+```
 
+```bash
 # 3. Publish assets and clear cache
-docker compose exec php bin/console assets:install --symlink
-docker compose exec php bin/console cache:clear
+bin/console assets:install public --symlink --relative
+bin/console cache:clear
 ```
 
 Other editor bundles (for example PimcoreQuillBundle) can stay enabled; pick the
