@@ -1,7 +1,7 @@
 {
   "name": "ckeditor-studio-bundle",
   "version": "0.0.1",
-  "license": "MIT",
+  "license": "GPL-2.0-or-later",
   "private": true,
   "scripts": {
     "dev": "NODE_ENV=development rsbuild build",
