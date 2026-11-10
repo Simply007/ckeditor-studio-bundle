@@ -1,11 +1,23 @@
 # CKEditor Studio Bundle
 
+[![CI](https://github.com/Simply007/pimcore-studio-ckeditor-bundle/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Simply007/pimcore-studio-ckeditor-bundle/actions/workflows/ci.yml)
+[![Packagist Version](https://img.shields.io/packagist/v/simply007/ckeditor-studio-bundle)](https://packagist.org/packages/simply007/ckeditor-studio-bundle)
+[![License](https://img.shields.io/packagist/l/simply007/ckeditor-studio-bundle)](LICENSE)
+[![PHP](https://img.shields.io/packagist/dependency-v/simply007/ckeditor-studio-bundle/php)](composer.json)
+[![Pimcore](https://img.shields.io/badge/Pimcore-2026.3-6428b4)](https://pimcore.com/docs/platform/)
+[![CKEditor](https://img.shields.io/badge/CKEditor-49.1-0287D0)](https://ckeditor.com/docs/ckeditor5/latest/)
+
 CKEditor rich text editor mounted as the wysiwyg editor in Pimcore Studio, the
 CKEditor counterpart to `pimcore/quill-bundle`, whose 2026.x architecture this bundle
 mirrors. It started as the demo for the talk "AI Best Practices for Your Product" at
 Pimcore Community Dev Days 2026 and was extracted from the
 [guidepost demo repository](https://github.com/Simply007/pcdd26-pimcore-ai-guidepost),
 which stays the reference installation.
+
+> [!IMPORTANT]
+> **Proof of concept.** This bundle is a showcase built for Pimcore Community Dev Days 2026.
+> It has not been reviewed or verified by Pimcore. Treat it as a starting point, not a
+> production-ready integration, until Pimcore verifies it.
 
 ![CKEditor in Pimcore Studio: a blog post data object edited with CKEditor, with the CKEditor AI chat docked next to it](docs/images/ckeditor-in-pimcore-studio.jpg)
 
