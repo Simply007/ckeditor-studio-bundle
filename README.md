@@ -2,6 +2,10 @@
 
 [![CI](https://github.com/Simply007/pimcore-studio-ckeditor-bundle/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Simply007/pimcore-studio-ckeditor-bundle/actions/workflows/ci.yml)
 [![Packagist Version](https://img.shields.io/packagist/v/simply007/ckeditor-studio-bundle)](https://packagist.org/packages/simply007/ckeditor-studio-bundle)
+[![License](https://img.shields.io/packagist/l/simply007/ckeditor-studio-bundle)](LICENSE)
+[![PHP](https://img.shields.io/packagist/dependency-v/simply007/ckeditor-studio-bundle/php)](composer.json)
+[![Pimcore](https://img.shields.io/badge/Pimcore-2026.x-6428b4)](https://pimcore.com/docs/platform/)
+[![CKEditor](https://img.shields.io/badge/CKEditor-49.1-0287D0)](https://ckeditor.com/docs/ckeditor5/latest/)
 
 CKEditor rich text editor mounted as the wysiwyg editor in Pimcore Studio, the
 CKEditor counterpart to `pimcore/quill-bundle`, whose 2026.x architecture this bundle
