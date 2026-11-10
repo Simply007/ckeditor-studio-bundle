@@ -1,5 +1,7 @@
 # CKEditor Studio Bundle
 
+[![Packagist Version](https://img.shields.io/packagist/v/simply007/ckeditor-studio-bundle)](https://packagist.org/packages/simply007/ckeditor-studio-bundle)
+
 CKEditor rich text editor mounted as the wysiwyg editor in Pimcore Studio, the
 CKEditor counterpart to `pimcore/quill-bundle`, whose 2026.x architecture this bundle
 mirrors. It started as the demo for the talk "AI Best Practices for Your Product" at
