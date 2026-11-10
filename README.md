@@ -1,5 +1,6 @@
 # CKEditor Studio Bundle
 
+[![CI](https://github.com/Simply007/pimcore-studio-ckeditor-bundle/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Simply007/pimcore-studio-ckeditor-bundle/actions/workflows/ci.yml)
 [![Packagist Version](https://img.shields.io/packagist/v/simply007/ckeditor-studio-bundle)](https://packagist.org/packages/simply007/ckeditor-studio-bundle)
 
 CKEditor rich text editor mounted as the wysiwyg editor in Pimcore Studio, the
